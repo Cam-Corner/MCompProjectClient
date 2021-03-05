@@ -4,25 +4,24 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
-#include "Networking/MPPlayerController.h"
-#include "Net/UnrealNetwork.h"
 #include "MPGameState.generated.h"
 
-
-/**
- * 
- */
-USTRUCT(Blueprintable)
+/*USTRUCT(Blueprintable)
 struct FChatMessage
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FString _PlayerWhoSentMessage{ "Unknown" };
+	FString _PlayerWhoSentMessage { "Unknown" };
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FString _Message{ "Nothing" };
-};
+	FString _Message { "Nothing" };
+};*/
+
+
+/**
+ * 
+ */
 
 UCLASS()
 class MCOMPPROJECTCLIENT_API AMPGameState : public AGameState
@@ -34,15 +33,11 @@ public:
 
 	void AddScore(uint8 PlayerNumber);
 
-
-	UFUNCTION(Server, UnReliable, WithValidation, BlueprintCallable)
-		void SendChatMessageToServer(const FChatMessage& Message);
-
-	UFUNCTION(Client, UnReliable, WithValidation)
-		void SendClientNewChatMessage(const FChatMessage& Message);
+	/*UFUNCTION(Server, UnReliable, WithValidation, BlueprintCallable)
+		void SendChatMessageToServer(const FChatMessage Message);
 
 	UFUNCTION(BlueprintCallable)
-		TArray<FChatMessage> GetChatMessages() { return _ClientChatMessages; }
+		TArray<FChatMessage> GetChatMessages() { return _ClientChatMessages; }*/
 
 public:
 
@@ -58,11 +53,11 @@ public:
 	void IncreaseVariable();
 
 	/** Store New Client Message */
-	void StoreNewChatMessage(const FChatMessage& Message);
+	//void StoreNewChatMessage(const FChatMessage Message);
 
 private:
 	/** Stores all the messages the clients have sent to each other*/
-	TArray<FChatMessage> _ClientChatMessages;
+	/*TArray<FChatMessage> _ClientChatMessages;
 
-	int32 _MaxStoredChatMessages = 15;
+	int32 _MaxStoredChatMessages = 15;*/
 };

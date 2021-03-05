@@ -9,6 +9,8 @@
 /**
  * 
  */
+struct FChatMessage;
+
 UCLASS()
 class MCOMPPROJECTCLIENT_API UMPGameInstance : public UGameInstance
 {
@@ -29,7 +31,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void SetPlayerNameServer();
 
+	void StoreNewChatMessage(const FChatMessage Message);
+
 private:
 	FString _PlayerName{ "No Name Given" };
 
+	//TArray<FChatMessage> _ClientChatMessages;
 };

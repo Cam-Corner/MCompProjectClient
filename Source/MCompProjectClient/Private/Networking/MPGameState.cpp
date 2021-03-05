@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#pragma once
 
 #include "Networking/MPGameState.h"
-//#include "GameFramework/PlayerState.h"
+#include "Net/UnrealNetwork.h"
 //#include "EngineUtils.h"
 
 AMPGameState::AMPGameState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -39,7 +40,7 @@ void AMPGameState::IncreaseVariable()
 	_SomeNumber++;
 }
 
-void AMPGameState::StoreNewChatMessage(const FChatMessage& Message)
+/*void AMPGameState::StoreNewChatMessage(const FChatMessage Message)
 {
 	_ClientChatMessages.Add(Message);
 
@@ -50,22 +51,33 @@ void AMPGameState::StoreNewChatMessage(const FChatMessage& Message)
 }
 
 
-bool AMPGameState::SendChatMessageToServer_Validate(const FChatMessage& Message)
+bool AMPGameState::SendChatMessageToServer_Validate(const FChatMessage Message)
 {
 	return true;
 }
 
-void AMPGameState::SendChatMessageToServer_Implementation(const FChatMessage& Message)
+void AMPGameState::SendChatMessageToServer_Implementation(const FChatMessage Message)
 {
-	SendClientNewChatMessage(Message);
-}
-
-bool AMPGameState::SendClientNewChatMessage_Validate(const FChatMessage& Message)
-{
-	return true;
-}
-
-void AMPGameState::SendClientNewChatMessage_Implementation(const FChatMessage& Message)
-{
+	UE_LOG(LogTemp, Display, TEXT(Message._PlayerWhoSentMessage + ": " + Message._Message));
 	StoreNewChatMessage(Message);
-}
+
+	UE_LOG(LogTemp, Display, TEXT("Sending New Chat Message To All Clients"));
+	
+	for (APlayerState* PS : PlayerArray)
+	{
+		PS->GetOwner();
+		
+		if (PS != NULL)
+		{
+			AMPPlayerController* PC = Cast<AMPPlayerController>(PS);
+
+			if (PC != NULL)
+				PC->SendClientNewChatMessage(Message);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Could not send message to clients!"));
+			return;
+		}
+	}
+}*/

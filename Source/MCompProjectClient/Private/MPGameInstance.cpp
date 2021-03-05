@@ -1,10 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "MPGameInstance.h"
-#include "Networking/MPPlayerState.h"
 #include "Networking/MPPlayerController.h"
-#include "Networking/MPGameState.h"
+#include "Networking/MPPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 
@@ -27,3 +25,13 @@ void UMPGameInstance::SetPlayerNameServer()
 		}
 	}
 }
+
+/*void UMPGameInstance::StoreNewChatMessage(const FChatMessage Message)
+{
+	_ClientChatMessages.Add(Message);
+
+	if (_ClientChatMessages.Num() > _MaxStoredChatMessages)
+	{
+		_ClientChatMessages.RemoveAt(0);
+	}
+}*/

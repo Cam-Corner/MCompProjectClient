@@ -2,15 +2,18 @@
 
 
 #include "Networking/MPPlayerController.h"
-#include "Networking/MPGameState.h"
 #include "Networking/MPPlayerState.h"
+#include "Networking/MPGameMode.h"
+#include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "MPGameInstance.h"
+#include "GameCamera.h"
 #include "Engine/World.h"
 
 
 AMPPlayerController::AMPPlayerController()
 {
+	bAutoManageActiveCameraTarget = false;
 }
 
 void AMPPlayerController::BeginPlay()
@@ -24,21 +27,17 @@ void AMPPlayerController::BeginPlay()
 void AMPPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
 
-	//if (GetLocalRole() != ROLE_Authority)
-	//{
-	//	AMPPlayerState* MPPlayerState = Cast<AMPPlayerState>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->PlayerState);
-	//
-	//	if (MPPlayerState != NULL)
-	//	{
-	//		UMPGameInstance* GI = Cast<UMPGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
-	//
-	//		if (GI != NULL)
-	//		{
-	//			MPPlayerState->Server_SetPlayerName(GI->GetPlayerName());
-	//		}
-	//	}
-	//}
+void AMPPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server possessed a pawn! Changing clients camera!"));
+		SetClientsCamera();
+	}
 }
 
 bool AMPPlayerController::Server_SetPlayerName_Validate(const FString& Name)
@@ -67,9 +66,6 @@ bool AMPPlayerController::AskClientToSetName_Validate()
 
 void AMPPlayerController::AskClientToSetName_Implementation()
 {
-
-	//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Client was asked for their display name"));
-
 	UMPGameInstance* GI = Cast<UMPGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
 	
 	if (GI != NULL)
@@ -78,4 +74,78 @@ void AMPPlayerController::AskClientToSetName_Implementation()
 		Server_SetPlayerName(GI->GetPlayerName());
 	}
 
+}
+
+//void AMPPlayerController::SendChatMessage_BP(const FString& ChatMessage)
+//{
+//	FChatMessage CM;
+//	FString Username = PlayerState->GetPlayerName();
+//	CM.SetMessage(Username, ChatMessage);
+//	SendChatMessage(CM);
+//}
+//
+//bool AMPPlayerController::SendChatMessage_Validate(const FChatMessage ChatMessage)
+//{
+//	return true;
+//}
+//
+//void AMPPlayerController::SendChatMessage_Implementation(const FChatMessage ChatMessage)
+//{
+//	AMPGameMode* GM = Cast<AMPGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+//
+//	if (GM != NULL)
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("Client Sent a Message"));
+//		GM->SendChatMessageToAllClients(ChatMessage);
+//	}
+//	else
+//	{
+//		UE_LOG(LogTemp, Error, TEXT("Cannot access GameMode"));
+//	}
+//}
+//
+//bool AMPPlayerController::ClientReceiveNewChatMessage_Validate(const FChatMessage ChatMessage)
+//{
+//	return true;
+//}
+//
+//void AMPPlayerController::ClientReceiveNewChatMessage_Implementation(const FChatMessage ChatMessage)
+//{
+//	_LastReceivedMessage = ChatMessage;
+//}
+
+bool AMPPlayerController::SetClientsCamera_Validate()
+{
+	return true;
+}
+
+void AMPPlayerController::SetClientsCamera_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Changed my camera - Called From Server!"));
+	SetCameraToGameCamera();
+}
+
+void AMPPlayerController::SetCameraToGameCamera()
+{
+	TArray<AActor*> GameCameras;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AGameCamera::StaticClass(), GameCameras);
+	bool bSetCamera = false;
+
+	for (AActor* AGC : GameCameras)
+	{
+		SetViewTarget(AGC);
+		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Changed camera to GameCamera"));
+		bSetCamera = true;
+		break;
+	}
+
+	if (!bSetCamera)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Can't find Game Camera"));
+
+		UE_LOG(LogTemp, Error, TEXT("Could not find game camera!"));
+
+		if (GameCameras.Num() == 0)
+			UE_LOG(LogTemp, Error, TEXT("Game Camera TArray is NULL!"));
+	}
 }

@@ -2,20 +2,24 @@
 
 
 #include "Networking/MPGameMode.h"
+#include "Networking/MPGameState.h"
 #include "Networking/MPPlayerController.h"
 #include "Networking/MPPlayerState.h"
-#include "Networking/MPGameState.h"
+#include "Networking/MPCharacter.h"
+#include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "GameCamera.h"
 #include "Kismet/GameplayStatics.h"
 
 AMPGameMode::AMPGameMode()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnOB(TEXT("/Game/ThirdPersonCPP/Blueprints/ThirdPersonCharacter"));
-	DefaultPawnClass = PlayerPawnOB.Class;
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnOB(TEXT("/Game/Blueprints/bp_Character"));
+	DefaultPawnClass = PlayerPawnOB.Class; //AMPCharacter::StaticClass();
 
 	PlayerControllerClass = AMPPlayerController::StaticClass();
 	PlayerStateClass = AMPPlayerState::StaticClass();
 	GameStateClass = AMPGameState::StaticClass();
+
 }
 
 bool AMPGameMode::ReadyToStartMatch_Implementation()
@@ -42,14 +46,13 @@ void AMPGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 	else
 		UE_LOG(LogTemp, Error, TEXT("Using wrong player controller!"));
+
+	
 }
 
 void AMPGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
-
-
-
 
 }
 
@@ -60,4 +63,43 @@ void AMPGameMode::BeginPlay()
 	_MaxNumberOfPlayers = FCString::Atoi(*(UGameplayStatics::ParseOption(OptionsString, "_MaxNumberOfPlayers")));
 }
 
+void AMPGameMode::RestartPlayer(AController* Player)
+{
+	Super::RestartPlayer(Player);
+	UE_LOG(LogTemp, Warning, TEXT("Restarting Player!"));
+	AMPPlayerController* PC = Cast<AMPPlayerController>(Player);
+	if (PC != NULL)
+	{
+		PC->SetClientsCamera();
+		UE_LOG(LogTemp, Warning, TEXT("Sent Request for clients to change their camera to the GameCamera!"));
+	}
+}
 
+void AMPGameMode::PlayerAttackedPlayer(AActor* AttackerActoR, AController* AttackerC, 
+	AActor* DamagedActor, AController* DamagedC, FHitInfo HitInfo)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Player Damaged a Player"));
+	
+	AMPCharacter* MPC = Cast<AMPCharacter>(DamagedActor);
+
+	if (MPC != NULL)
+	{
+		MPC->RemoveSomeHP(10, DamagedC->PlayerState->GetPlayerName());
+	}
+}
+
+//void AMPGameMode::SendChatMessageToAllClients(const FChatMessage ChatMessage)
+//{
+//	for (APlayerController* PC : _PlayerControllers)
+//	{
+//		AMPPlayerController* MPPC = Cast<AMPPlayerController>(PC);
+//		if (MPPC != NULL)
+//		{
+//			MPPC->ClientReceiveNewChatMessage(ChatMessage);
+//		}
+//		else
+//		{
+//			UE_LOG(LogTemp, Error, TEXT("Cannot cast PC to MPPC"));
+//		}
+//	}
+//}
