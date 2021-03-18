@@ -6,6 +6,7 @@
 #include "MPGameInstance.h"
 #include "Engine/World.h"
 #include "CoreGlobals.h"
+#include "Net/UnrealNetwork.h"
 
 AMPPlayerState::AMPPlayerState()
 {
@@ -48,6 +49,20 @@ void AMPPlayerState::OverrideWith(class APlayerState* PlayerState)
 
 }
 
+void AMPPlayerState::GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deaths)
+{
+	PlayerName = GetPlayerName();
+	Kills = _Kills;
+	Deaths = _Deaths;
+}
+
+void AMPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMPPlayerState, _Kills);
+	DOREPLIFETIME(AMPPlayerState, _Deaths);
+}
 
 
 

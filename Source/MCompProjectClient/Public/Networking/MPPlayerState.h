@@ -32,4 +32,28 @@ public:
 		const FString GetPlayerName_BPCallable() { return GetPlayerName(); }
 
 	virtual void BeginPlay() override;
+
+	/** Increase the kill counter
+	* @ Will only work when being called on the server
+	*/
+	void IncreaseKillCounter() { if (GetLocalRole() == ROLE_Authority) _Kills++; }
+
+	/** Increase the Death counter
+	* @ Will only work when being called on the server
+	*/
+	void IncreaseDeathCounter() { if(GetLocalRole() == ROLE_Authority) _Deaths++; }
+
+	/** Get the KD and name of this player
+	* @ The passed in variable should be used to save the KD
+	*/
+	UFUNCTION(BlueprintCallable)
+	void GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deaths);
+
+protected:
+	UPROPERTY(Replicated)
+		int32 _Kills { 0 };
+
+	UPROPERTY(Replicated)
+		int32 _Deaths { 0 };
+
 };

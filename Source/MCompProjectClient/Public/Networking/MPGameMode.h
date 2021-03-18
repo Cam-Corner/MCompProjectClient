@@ -52,11 +52,21 @@ public:
 
 	virtual void RestartPlayer(AController* Player) override;
 
+	virtual void HandleMatchHasStarted() override;
+
+	/*
+	* This function is used to spawn a player and then possess it using the provided PlayerController
+	*/
+	//void SpawnPlayer(class AMPPlayerController* MPPC);
+
 	//void SendChatMessageToAllClients(const struct FChatMessage ChatMessage);
 
 	/** Call to calculate damage between player attacks */
 	void PlayerAttackedPlayer(AActor* AttackerActor, AController* AttackerC, 
 		AActor* DamagedActor, AController* DamagedC, FHitInfo HitInfo);
+
+protected:
+	bool BlockedShot(class AMPCharacter* Attacker, class AMPCharacter* Defender);
 
 private:
 	/** The Max number of players that are allowed in the server */
@@ -66,5 +76,19 @@ private:
 	TArray<class APlayerController*> _PlayerControllers;
 
 	int32 _PlayerNum{ 1 };
+
+	/*
+	* The pawn that will be used when spawning a character
+	* Not set by the defualt gamemode beause I want control over when I spawn it
+	*/
+	//class AMPCharacter* _DefualtCharacter;
+
+	/** Has the game started */
+	bool _bGameCanStart = false;
+
+	/*
+	* A List of all the player camera's in the scene
+	* Useful the server has access to the camera incase the server wants to do something with it
+	*/
 
 };

@@ -8,7 +8,26 @@
 
 AMPGameState::AMPGameState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	
+	if(GetLocalRole() == ROLE_Authority)
+		PrimaryActorTick.bCanEverTick = true;
+	else
+		PrimaryActorTick.bCanEverTick = false;
+}
+
+void AMPGameState::Tick(float DeltaTime)
+{
+	if (!HasMatchStarted())
+		return;
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		_TimerRemaining -= DeltaTime;
+	}
+}
+
+FString AMPGameState::GetTimeRemaining()
+{ 
+	return FGameTimer::ConvertTimeForUI_Static(_TimerRemaining); 
 }
 
 void AMPGameState::AddScore(uint8 PlayerNumber)
@@ -33,6 +52,7 @@ void AMPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AMPGameState, _PlayerOneScore);
 	DOREPLIFETIME(AMPGameState, _PlayerTwoScore);
 	DOREPLIFETIME(AMPGameState, _SomeNumber);
+	DOREPLIFETIME(AMPGameState, _TimerRemaining);
 }
 
 void AMPGameState::IncreaseVariable()

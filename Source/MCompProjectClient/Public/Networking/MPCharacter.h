@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Networking/CharacterGearHelpers.h"
 #include "MPCharacter.generated.h"
 
 UCLASS()
@@ -26,6 +27,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void Restart() override;
+
 	/** Edit the players health */
 	void RemoveSomeHP(float Amount, FString Name) { 
 		_Health -= Amount; 
@@ -36,25 +39,50 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetHealth() { return _Health; }
 
+	/*
+	*Is the player blocking
+	*/
+	bool IsBlocking() { return _bBlocking; }
+
+	/** Ask client to send their equiped items */
+	UFUNCTION(Client, UnReliable, WithValidation)
+		void RequestItems_Client();
+
 /*=======
 Server Functions
 =====*/
 protected:
 	/** Sets the unit Vector on the server */
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(Server, UnReliable, WithValidation)
 		void Server_SetUnitVector(FVector UnitV);
 
 	/** Sets the blocking state on the server */
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(Server, UnReliable, WithValidation)
 		void Server_SetEnabledBlock(bool bBlocked);
 
 	/** Sets the attacking state on the server */
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(Server, UnReliable, WithValidation)
 		void Server_SetAttacking(bool bAttacking);
 
 	/** Tells all the clients that this actor has stopped attacking */
-	UFUNCTION(NetMulticast, Reliable, WithValidation)
+	UFUNCTION(NetMulticast, Unreliable, WithValidation)
 		void Multicast_StopAttacking();
+
+	/** Called on the server (should be from the PC) to be excuted on everything */
+	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+		void SetupMeshes_Multicast(uint8 HelmetID, uint8 HairID, uint8 FaceID,
+			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
+		/*struct FFinalCharacterGear EquipedGear*/);
+	
+	/** Send the items equiped to the server */
+	UFUNCTION(Server, UnReliable, WithValidation)
+		void SendItemsEquiped_Server(uint8 HelmetID, uint8 HairID, uint8 FaceID,
+			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
+		/*struct FFinalCharacterGear EquipedGear*/);
+
+	/** Equip a weapon for this actor and call on all clients */
+	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+		void EquipWeapon_Multicast();
 
 /*====
 Components	
@@ -65,7 +93,7 @@ protected:
 
 	/** Static mesh that is used for right hand items*/
 	//UPROPERTY(EditAnywhere)
-	//class UStaticMeshComponent* _RightHandItem;
+	class UStaticMeshComponent* _RightHandItem;
 	
 	/** Static mesh for holding left handed items*/
 	class UStaticMeshComponent* _LeftHandItem;
@@ -76,7 +104,7 @@ protected:
 	//UPROPERTY(EditAnywhere)
 	//class UBoxComponent* _SwordHitBox;
 
-	class AWeaponBase* _Weapon;
+	//class AWeaponBase* _Weapon;
 /*====
 Functions
 ====*/
@@ -104,17 +132,28 @@ protected:
 	/** Work out if anyone is being hit */
 	void CheckForHits();
 
-	/** function that is called when the hand overlaps something */
+	/** function that is called when the sword overlaps something */
 	UFUNCTION()
 		void SwordHitBoxOverlapBegin(class UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 			class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
 			const FHitResult& HitResult);
 
-	/** function that is called when the hand leaves an overlaped object */
+	/** function that is called when the sword leaves an overlaped object */
 	UFUNCTION()
 		void SwordHitBoxOverlapEnd(class UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 			class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	/*
+	* Setup the Skeletal Character Meshes when asked 
+	* Uses the _EquipedGear set by the server to setup the right SK Meshes
+	*/
+	void SetupSkeletalCharacterMeshes(uint8 HelmetID, uint8 HairID, uint8 FaceID, 
+		uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID 
+		/*struct FFinalCharacterGear EquipedGear*/);
+
+	/** Quit the game */
+	UFUNCTION()
+		void QuitGame();
 
 /*====
 Variables
@@ -137,21 +176,37 @@ protected:
 
 	float _AttackDuration{ 0 };
 
+	UPROPERTY(Replicated)
+	struct FFinalCharacterGear _EquipedGear;
+
 	/** The final movement vector of this frame */
 	UPROPERTY(Replicated)
 	FVector _FinalMovementDirection{ 0, 0, 0 };
 
-	/** The actors that are in the swords collision box
-		@Only Useful for the server
-		@Wont be used for clients
+	/*
+	* The actors that are in the swords collision box
+	* Only Useful for the server
+	* Wont be used for clients
 	*/
-	//TArray<AMPCharacter*> _PlayersInSwordCol;
+	TArray<AMPCharacter*> _PlayersInSwordCol;
 
-	/** The actors that have already been hit by the sword 
-		@Gets cleared after every sword swing
-		@used so players don't get hit twice by the same actor
-		@only useful for the server
-		@won't be used on the client
+	/*
+	* The actors that have already been hit by the sword 
+	* Gets cleared after every sword swing
+	* used so players don't get hit twice by the same actor
+	* only useful for the server
+	* won't be used on the client
 	*/
 	TArray<AMPCharacter*> _PlayersHitBySword;
+
+	UPROPERTY(EditAnywhere)
+	class USkeletalMesh* _ItemMesh;
+
+	class USkeletalMeshComponent* _HelmetSM;
+	class USkeletalMeshComponent* _HairSM;
+	class USkeletalMeshComponent* _FaceSM;
+	class USkeletalMeshComponent* _ShouldersSM;
+	class USkeletalMeshComponent* _GlovesSM;
+	class USkeletalMeshComponent* _BeltSM;
+	class USkeletalMeshComponent* _ShoesSM;
 };

@@ -5,10 +5,22 @@
 #include "Networking/MPPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "ItemData.h"
+#include "UObject/ConstructorHelpers.h"
 
 UMPGameInstance::UMPGameInstance()
 {
-
+	static ConstructorHelpers::FObjectFinder<UItemData>
+		ItemData(TEXT("ItemData'/Game/ItemData/ArmourItems.ArmourItems'"));
+	
+	if (ItemData.Succeeded())
+	{
+		_Items = ItemData.Object;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("MPGameInstance: Could not load ItemData!"));
+	}
 }
 
 void UMPGameInstance::SetPlayerNameServer()

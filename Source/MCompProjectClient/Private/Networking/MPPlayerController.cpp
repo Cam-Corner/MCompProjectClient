@@ -22,6 +22,12 @@ void AMPPlayerController::BeginPlay()
 
 	if (GetLocalRole() != ROLE_Authority) {}
 		//Server_IncreaseVariable();
+
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+
+	SetInputMode(FInputModeGameOnly());
 }
 
 void AMPPlayerController::Tick(float DeltaTime)
