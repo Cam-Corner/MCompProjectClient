@@ -9,6 +9,7 @@
 /**
  * 
  */
+DECLARE_LOG_CATEGORY_EXTERN(LogAMPPlayerController, Log, All);
 
 USTRUCT(BlueprintType)
 struct FChatMessage
@@ -46,11 +47,14 @@ public:
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void SetClientsCamera();
 
-	//UFUNCTION(Server, Reliable, WithValidation)
-	//	void SendChatMessage(const FChatMessage ChatMessage);
-	//
-	//UFUNCTION(Client, Reliable, WithValidation)
-	//	void ClientReceiveNewChatMessage(const FChatMessage ChatMessage);
+	//UFUNCTION(Client, Reliable)
+	//	void Client_SetHasControl(bool bHasControl);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void SendChatMessage(const FChatMessage ChatMessage);
+	
+	UFUNCTION(Client, Reliable, WithValidation)
+		void ClientReceiveNewChatMessage(const FChatMessage ChatMessage);
 	//
 	//UFUNCTION(BlueprintCallable)
 	//	void SendChatMessage_BP(const FString& ChatMessage);
@@ -63,9 +67,51 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void OnPossess(APawn* InPawn) override;
-	
-	void SetCameraToGameCamera();;
+
+	// Called to bind functionality to input
+	virtual void SetupInputComponent() override;
+
+	void SetCameraToGameCamera();
+
+	UFUNCTION(Client, Reliable)
+	void Client_GameStarted();
 
 private:
+	/*
+	* Controls the YawMovement of the controller
+	*/
+	UFUNCTION()
+		void YawInput(float Value);
+
+	/*
+	* Controls the pitch of the player controller
+	*/
+	UFUNCTION()
+		void PitchInput(float Value);
+
+	float _CameraSensitivity{ 12.0f };
+
 	FChatMessage _LastReceivedMessage;
+
+	/** Is the player allowed to control this pawn at this current moment */
+	bool _bHasControl{ true };
+
+	/*
+	* Cached CameraActor that this PC Uses
+	*/
+	class AMPCamera* _CameraActor;
+
+	/*
+	* Is the player currently typing
+	*/
+	bool _bTyping = false;
+
+	UFUNCTION()
+		void ToggleChat();
+
+	/*
+	* Cached AGameHUD
+	* @can be null
+	*/
+	class AGameHUD* _GameHUD;
 };

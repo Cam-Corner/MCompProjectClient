@@ -17,6 +17,7 @@ AGameCamera::AGameCamera()
 	====*/
 	_Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Game Camera"));
 	_Camera->SetupAttachment(RootComponent);
+	//_Camera->SetFieldOfView(70);
 }
 
 // Called when the game starts or when spawned

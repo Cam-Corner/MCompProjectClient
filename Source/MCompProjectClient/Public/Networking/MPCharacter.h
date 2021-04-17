@@ -5,7 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Networking/CharacterGearHelpers.h"
+#include "Utility/PIDController.h"
 #include "MPCharacter.generated.h"
+
+//class PIDController; 
+DECLARE_LOG_CATEGORY_EXTERN(LogAMPCharacter, Log, All);
 
 UCLASS()
 class MCOMPPROJECTCLIENT_API AMPCharacter : public ACharacter
@@ -15,6 +19,8 @@ class MCOMPPROJECTCLIENT_API AMPCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AMPCharacter();
+
+	float _TempTimer = 0.25f;
 
 protected:
 	// Called when the game starts or when spawned
@@ -45,7 +51,7 @@ public:
 	bool IsBlocking() { return _bBlocking; }
 
 	/** Ask client to send their equiped items */
-	UFUNCTION(Client, UnReliable, WithValidation)
+	UFUNCTION(Client, Reliable, WithValidation)
 		void RequestItems_Client();
 
 /*=======
@@ -53,36 +59,43 @@ Server Functions
 =====*/
 protected:
 	/** Sets the unit Vector on the server */
-	UFUNCTION(Server, UnReliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetUnitVector(FVector UnitV);
+
+	UFUNCTION(Server, Reliable)
+		void Server_SetRotation(FRotator Rotation);
 
 	/** Sets the blocking state on the server */
 	UFUNCTION(Server, UnReliable, WithValidation)
 		void Server_SetEnabledBlock(bool bBlocked);
 
 	/** Sets the attacking state on the server */
-	UFUNCTION(Server, UnReliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetAttacking(bool bAttacking);
 
 	/** Tells all the clients that this actor has stopped attacking */
-	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+	UFUNCTION(NetMulticast, reliable, WithValidation)
 		void Multicast_StopAttacking();
 
 	/** Called on the server (should be from the PC) to be excuted on everything */
-	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+	UFUNCTION(NetMulticast, reliable, WithValidation)
 		void SetupMeshes_Multicast(uint8 HelmetID, uint8 HairID, uint8 FaceID,
 			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
 		/*struct FFinalCharacterGear EquipedGear*/);
 	
 	/** Send the items equiped to the server */
-	UFUNCTION(Server, UnReliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 		void SendItemsEquiped_Server(uint8 HelmetID, uint8 HairID, uint8 FaceID,
 			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
 		/*struct FFinalCharacterGear EquipedGear*/);
 
 	/** Equip a weapon for this actor and call on all clients */
-	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+	UFUNCTION(NetMulticast, reliable, WithValidation)
 		void EquipWeapon_Multicast();
+
+	/** Tell the server im ready to recieve intitial stuff */
+	//UFUNCTION(Server, Reliable)
+	//	void Server_ReadyForIntitialSetup();
 
 /*====
 Components	
@@ -127,7 +140,7 @@ protected:
 		void StartAttacking();
 
 	/* works out the final movement */
-	void FinalMovement();
+	void FinalMovement(float DeltaTime);
 
 	/** Work out if anyone is being hit */
 	void CheckForHits();
@@ -155,6 +168,10 @@ protected:
 	UFUNCTION()
 		void QuitGame();
 
+	/*
+	* smooths the rotation to match where the play is currently facing
+	*/
+	void SmoothRotationToDirection(float DeltaTime);
 /*====
 Variables
 ====*/
@@ -183,6 +200,9 @@ protected:
 	UPROPERTY(Replicated)
 	FVector _FinalMovementDirection{ 0, 0, 0 };
 
+	/** Last direction that they faced */
+	FVector _LastMovementDirection{ 0, 0, 0 };
+
 	/*
 	* The actors that are in the swords collision box
 	* Only Useful for the server
@@ -209,4 +229,8 @@ protected:
 	class USkeletalMeshComponent* _GlovesSM;
 	class USkeletalMeshComponent* _BeltSM;
 	class USkeletalMeshComponent* _ShoesSM;
+
+	PIDController _RotationPID{ 0.2f, 0.0f, 0.01f };
+
+	float CurrentYaw = 1;
 };

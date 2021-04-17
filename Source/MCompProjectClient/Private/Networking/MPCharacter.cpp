@@ -17,6 +17,7 @@
 #include "Networking/MPPlayerState.h"
 #include "Networking/MPPlayerController.h"
 #include "Networking/MPGameMode.h"
+#include "Networking/MPCamera.h"
 #include "Net/UnrealNetwork.h"
 #include "GameCamera.h"
 #include "Components/SkinnedMeshComponent.h"
@@ -24,6 +25,7 @@
 #include "MPGameInstance.h"
 #include "ItemData.h"
 
+DEFINE_LOG_CATEGORY(LogAMPCharacter);
 // Sets default values
 AMPCharacter::AMPCharacter()
 {
@@ -117,13 +119,22 @@ AMPCharacter::AMPCharacter()
 void AMPCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	/* Temporary set all the meshes to the default (0 index)
+	*  until the server recieves the right equipment */
+	SetupSkeletalCharacterMeshes(0, 0, 0, 0, 0, 0, 0, 0); 
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
+		/* Sword hit events are used to check if the sword hit a player when attacking
+		   only needs to do this on the server since the client should never handle the attack events */
 		_RightHandItem->OnComponentBeginOverlap.AddDynamic(this, &AMPCharacter::SwordHitBoxOverlapBegin);
 		_RightHandItem->OnComponentEndOverlap.AddDynamic(this, &AMPCharacter::SwordHitBoxOverlapEnd);
 
-		UE_LOG(LogTemp, Display, TEXT("Request To Change Items!"));
+		UE_LOG(LogAMPCharacter, Display, TEXT("Request To Change Items!"));
 		//RequestItems_Client();
 	}
 	else if(GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
@@ -152,6 +163,7 @@ void AMPCharacter::BeginPlay()
 	//_Weapon = GetWorld()->SpawnActor<AWeaponBase>();
 	//_Weapon->SetActorLocation(GetMesh()->GetSocketLocation("hand_rSocket"));
 	//_Weapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::, "hand_rSocket");
+
 }
 
 // Called every frame
@@ -162,6 +174,17 @@ void AMPCharacter::Tick(float DeltaTime)
 	//_Weapon->SetActorRotation(GetMesh()->GetSocketRotation("hand_rSocket") - FRotator(0, 0, 90));
 	//_Weapon->SetActorLocation(GetMesh()->GetSocketLocation("hand_rSocket"), true);
 
+
+	//if (_TempTimer <= 0)
+	//{
+	//	UE_LOG(LogAMPCharacter, Warning, TEXT("Actor Rotation: %f"), GetActorRotation().Yaw);
+	//	UE_LOG(LogAMPCharacter, Warning, TEXT("Mesh Rotation: %f"), GetMesh()->GetComponentRotation().Yaw);
+	//
+	//	_TempTimer = 0.25f;
+	//}
+	//else
+	//	_TempTimer -= DeltaTime;
+
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		//
@@ -169,22 +192,13 @@ void AMPCharacter::Tick(float DeltaTime)
 		//SetupMeshes_Multicast(_EquipedGear._HelmetID, _EquipedGear._HairID, _EquipedGear._FaceID,
 		//	_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID,
 		//	_EquipedGear._ShoesID);
-	}
 
-	if (!_bIsAttacking)
-		FinalMovement();
-	else
-	{
-		CheckForHits();
-	
-		//UE_LOG(LogTemp, Warning, TEXT("Sword Location: %s, Sword Rotation: %s"),
-		//	*_Weapon->GetActorLocation().ToString(), *_Weapon->GetActorRotation().ToString());
-	}
-	
-	if (GetLocalRole() == ROLE_Authority)
-	{
 		if (_bIsAttacking)
 		{
+			//UE_LOG(LogAMPCharacter, Warning, TEXT("Sword Location: %s, Sword Rotation: %s"),
+			//	*_Weapon->GetActorLocation().ToString(), *_Weapon->GetActorRotation().ToString());
+			CheckForHits();
+
 			if (_AttackDuration > 0)
 				_AttackDuration -= DeltaTime;
 			else
@@ -193,8 +207,30 @@ void AMPCharacter::Tick(float DeltaTime)
 				_PlayersHitBySword.Empty();
 			}
 		}
-	}
+		else
+		{
+			FinalMovement(DeltaTime);
+		}
 
+		SmoothRotationToDirection(DeltaTime);
+	}
+	else if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		if (!_bIsAttacking)
+			FinalMovement(DeltaTime);
+
+		SmoothRotationToDirection(DeltaTime);
+	}
+	else if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		if (_AnimInstance != NULL)
+		{
+			_AnimInstance->SetIsAttacking(_bIsAttacking);
+			_AnimInstance->SetIsBlocking(_bBlocking);
+		}
+
+		SmoothRotationToDirection(DeltaTime);
+	}
 }
 
 // Called to bind functionality to input
@@ -237,13 +273,13 @@ void AMPCharacter::QuitGame()
 
 void AMPCharacter::MoveUp(float Value)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Move UP"));
+	//UE_LOG(LogAMPCharacter, Warning, TEXT("Move UP"));
 	_FinalMovementDirection.X = Value;
 }
 
 void AMPCharacter::MoveRight(float Value)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Move Right"));
+	//UE_LOG(LogAMPCharacter, Warning, TEXT("Move Right"));
 
 	_FinalMovementDirection.Y = Value;
 }
@@ -276,7 +312,7 @@ void AMPCharacter::StoppedBlocking()
 	Server_SetEnabledBlock(_bBlocking);
 }
 
-void AMPCharacter::FinalMovement()
+void AMPCharacter::FinalMovement(float DeltaTime)
 {
 	if (_FinalMovementDirection.X > 0.5f || _FinalMovementDirection.X < -0.5f ||
 		_FinalMovementDirection.Y > 0.5f || _FinalMovementDirection.Y < -0.5f)
@@ -285,57 +321,97 @@ void AMPCharacter::FinalMovement()
 			|| _FinalMovementDirection.X + _FinalMovementDirection.Y < -1)
 			_FinalMovementDirection.Normalize();
 
+		_LastMovementDirection = _FinalMovementDirection;
 
-		//GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Yellow, TEXT("Unit Vector: " + _FinalMovementDirection.ToCompactString()));
-
-		float DotProduct = FVector::DotProduct(FVector::ForwardVector, _FinalMovementDirection);
-		float Angle = acos(DotProduct);
-
-		if (_FinalMovementDirection.Y < 0)
 		{
-			Angle = Angle * -1;
-			Angle += 6.28;
+			//float DotProduct = FVector::DotProduct(FVector::ForwardVector, _FinalMovementDirection);
+			//float Angle = acos(DotProduct);
+			//
+			//if (_FinalMovementDirection.Y < 0)
+			//{
+			//	Angle = Angle * -1;
+			//	Angle += 6.28;
+			//}
+
+			//if (GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetOwner())
+			//{
+			//	GEngine->AddOnScreenDebugMessage(3, 5.0f, FColor::Yellow, TEXT("My Angle: " + FString::SanitizeFloat(Angle * 57.2958)));
+			//}
+
+			//FRotator FinalRot = GetMesh()->GetComponentRotation();
+			//FinalRot.Yaw = FMath::Lerp(FinalRot.Yaw,(float)((Angle * 57.2958) - 90), 0.5f);
+			//
 		}
-
-		//if (GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetOwner())
-		//{
-		//	GEngine->AddOnScreenDebugMessage(3, 5.0f, FColor::Yellow, TEXT("My Angle: " + FString::SanitizeFloat(Angle * 57.2958)));
-		//}
-
-		FRotator FinalRot = GetMesh()->GetComponentRotation();
-		FinalRot.Yaw = (Angle * 57.2958) - 90;
-
-		GetMesh()->SetWorldRotation(FinalRot);
 
 		if (_AnimInstance != NULL)
 		{
-			if (/*(_FinalMovementDirection.X != 0 || _FinalMovementDirection.Y != 0) &&*/ !_bBlocking)
+			if (!_bBlocking)
 			{
-				//UE_LOG(LogTemp, Warning, TEXT("Setting Animation"));
+				//UE_LOG(LogAMPCharacter, Warning, TEXT("Setting Animation"));
 				_AnimInstance->SetCurrentSpeed(1);
 			}
-			//else
-				//_AnimInstance->SetCurrentSpeed(0);
 		}
+		
+		if(GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
+			Server_SetUnitVector(_FinalMovementDirection);
 
-		Server_SetUnitVector(_FinalMovementDirection);
-
-		AddMovementInput(_FinalMovementDirection, 1);
+		AddMovementInput(/*_FinalMovementDirection*/ FVector(_LastMovementDirection.X, _LastMovementDirection.Y, 0), 1);
 	}
 	else
 	{
 		if (_AnimInstance != NULL)
 		{
+			if (GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
+				Server_SetUnitVector(_FinalMovementDirection);
+
 			_AnimInstance->SetCurrentSpeed(0);
 		}
 	}
+}
+
+void AMPCharacter::SmoothRotationToDirection(float DeltaTime)
+{
+	float GotoYaw = atan2(_LastMovementDirection.Y, _LastMovementDirection.X);
+	GotoYaw = GotoYaw * 57.2958; //convert to degrees
+	if (GotoYaw < 0) GotoYaw += 360;
+
+	float LerpSpeed = 10.0f;
+	if (CurrentYaw - GotoYaw > 180 || CurrentYaw - GotoYaw < -180)
+	{
+		if (CurrentYaw > 180)
+		{
+			CurrentYaw = FMath::Lerp(CurrentYaw, 360.0f + GotoYaw, DeltaTime * LerpSpeed);
+
+			if (CurrentYaw >= 360)
+				CurrentYaw = FMath::Fmod(CurrentYaw, 360);
+		}
+		else
+		{
+			CurrentYaw = FMath::Lerp(CurrentYaw, 0.0f - (360 - GotoYaw), DeltaTime * LerpSpeed);
+
+			if (CurrentYaw < 0)
+			{
+				CurrentYaw = 360 - FMath::Fmod(CurrentYaw, 360);
+			}
+		}
+	}
+	else
+		CurrentYaw = FMath::Lerp(CurrentYaw, GotoYaw, DeltaTime * LerpSpeed);
+
+	//GEngine->AddOnScreenDebugMessage(0, 5.0f, FColor::Yellow, TEXT("My Angle: " + FString::SanitizeFloat(DeltaTime)));
+
+	SetActorRotation(FRotator(GetActorRotation().Pitch, CurrentYaw, GetActorRotation().Roll));
+	GetMesh()->SetWorldRotation(FRotator(GetActorRotation().Pitch, GetActorRotation().Yaw - 90, GetActorRotation().Roll));
+
+	if (GetLocalRole() != ROLE_Authority && GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		Server_SetRotation(GetActorRotation());
 }
 
 void AMPCharacter::CheckForHits()
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("Checking for Player hits!"));
+		//UE_LOG(LogAMPCharacter, Warning, TEXT("Checking for Player hits!"));
 
 
 		if (_PlayersInSwordCol.Num() > 0)
@@ -392,6 +468,12 @@ void AMPCharacter::CheckForHits()
 			}
 		}
 	}
+}
+
+void AMPCharacter::Server_SetRotation_Implementation(FRotator Rotation)
+{
+	SetActorRotation(Rotation);
+	GetMesh()->SetWorldRotation(FRotator(Rotation.Pitch, Rotation.Yaw - 90, Rotation.Roll));
 }
 
 bool AMPCharacter::Server_SetUnitVector_Validate(FVector UnitV)
@@ -638,4 +720,3 @@ void AMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AMPCharacter, _Health);
 	DOREPLIFETIME(AMPCharacter, _EquipedGear);
 }
-

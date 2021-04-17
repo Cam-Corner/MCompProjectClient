@@ -25,5 +25,6 @@ public:
 
 private:
 	/** The Games Camera */
+	UPROPERTY(EditAnywhere, Category = "Camera")
 	class UCameraComponent* _Camera;
 };

@@ -6,6 +6,8 @@
 #include "GameFramework/GameMode.h"
 #include "MPGameMode.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogAMPGameMode, Log, All);
+
 UENUM()
 enum EWeaponType
 {
@@ -54,12 +56,14 @@ public:
 
 	virtual void HandleMatchHasStarted() override;
 
+	virtual void Logout(AController* Exiting) override;
+
 	/*
 	* This function is used to spawn a player and then possess it using the provided PlayerController
 	*/
 	//void SpawnPlayer(class AMPPlayerController* MPPC);
 
-	//void SendChatMessageToAllClients(const struct FChatMessage ChatMessage);
+	void SendChatMessageToAllClients(const struct FChatMessage ChatMessage);
 
 	/** Call to calculate damage between player attacks */
 	void PlayerAttackedPlayer(AActor* AttackerActor, AController* AttackerC, 
@@ -68,6 +72,7 @@ public:
 protected:
 	bool BlockedShot(class AMPCharacter* Attacker, class AMPCharacter* Defender);
 
+	void SpawnPlayerCamera(AController* OwningPlayer);
 private:
 	/** The Max number of players that are allowed in the server */
 	int32 _MaxNumberOfPlayers;
@@ -90,5 +95,6 @@ private:
 	* A List of all the player camera's in the scene
 	* Useful the server has access to the camera incase the server wants to do something with it
 	*/
+	TArray<class AMPCamera*> _PlayerCameras;
 
 };
