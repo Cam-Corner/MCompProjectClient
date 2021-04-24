@@ -20,6 +20,7 @@
 #include "Networking/MPCamera.h"
 #include "Net/UnrealNetwork.h"
 #include "GameCamera.h"
+#include "UI/GameHUD.h"
 #include "Components/SkinnedMeshComponent.h"
 #include "Weapons/WeaponBase.h"
 #include "MPGameInstance.h"
@@ -126,16 +127,23 @@ void AMPCharacter::BeginPlay()
 	/* Temporary set all the meshes to the default (0 index)
 	*  until the server recieves the right equipment */
 	SetupSkeletalCharacterMeshes(0, 0, 0, 0, 0, 0, 0, 0); 
-
+	
+	_LeftHandItem->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "LeftWeaponShield");
+	_RightHandItem->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "RightWeaponShield");
+	
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		/* Sword hit events are used to check if the sword hit a player when attacking
 		   only needs to do this on the server since the client should never handle the attack events */
 		_RightHandItem->OnComponentBeginOverlap.AddDynamic(this, &AMPCharacter::SwordHitBoxOverlapBegin);
 		_RightHandItem->OnComponentEndOverlap.AddDynamic(this, &AMPCharacter::SwordHitBoxOverlapEnd);
+		
 
+		
 		UE_LOG(LogAMPCharacter, Display, TEXT("Request To Change Items!"));
 		//RequestItems_Client();
+
+		//EquipWeapon_Multicast();
 	}
 	else if(GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
@@ -143,6 +151,8 @@ void AMPCharacter::BeginPlay()
 		SetupSkeletalCharacterMeshes(_EquipedGear._HelmetID, _EquipedGear._HairID, _EquipedGear._FaceID, 
 			_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID, 
 			_EquipedGear._ShoesID);
+
+		Server_EquipWeaponProperly();
 	}
 	else
 	{
@@ -152,13 +162,13 @@ void AMPCharacter::BeginPlay()
 			SetupSkeletalCharacterMeshes(Gear._HelmetID, Gear._HairID, Gear._FaceID, Gear._ShouldersID,
 				Gear._BodyID, Gear._GlovesID, Gear._BeltID, Gear._ShoesID);
 
-			GEngine->AddOnScreenDebugMessage(2, 15.0f, FColor::Black, "Sending Items to Server: " + Gear._HelmetID);
+			//GEngine->AddOnScreenDebugMessage(2, 15.0f, FColor::Black, "Sending Items to Server: " + Gear._HelmetID);
 			SendItemsEquiped_Server(Gear._HelmetID, Gear._HairID, Gear._FaceID, Gear._ShouldersID,
 				Gear._BodyID, Gear._GlovesID, Gear._BeltID, Gear._ShoesID);
 		}
-	}
+		Server_EquipWeaponProperly();
 
-	EquipWeapon_Multicast();
+	}
 
 	//_Weapon = GetWorld()->SpawnActor<AWeaponBase>();
 	//_Weapon->SetActorLocation(GetMesh()->GetSocketLocation("hand_rSocket"));
@@ -193,6 +203,7 @@ void AMPCharacter::Tick(float DeltaTime)
 		//	_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID,
 		//	_EquipedGear._ShoesID);
 
+
 		if (_bIsAttacking)
 		{
 			//UE_LOG(LogAMPCharacter, Warning, TEXT("Sword Location: %s, Sword Rotation: %s"),
@@ -209,17 +220,22 @@ void AMPCharacter::Tick(float DeltaTime)
 		}
 		else
 		{
-			FinalMovement(DeltaTime);
+			//FinalMovement(DeltaTime);
 		}
 
 		SmoothRotationToDirection(DeltaTime);
 	}
-	else if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	else if (GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
 		if (!_bIsAttacking)
 			FinalMovement(DeltaTime);
 
 		SmoothRotationToDirection(DeltaTime);
+
+		if (AGameHUD* HUD = Cast<AGameHUD>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetHUD()))
+		{
+			HUD->SetHealthBar(_Health, 100);
+		}
 	}
 	else if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
@@ -227,6 +243,11 @@ void AMPCharacter::Tick(float DeltaTime)
 		{
 			_AnimInstance->SetIsAttacking(_bIsAttacking);
 			_AnimInstance->SetIsBlocking(_bBlocking);
+
+			if (_FinalMovementDirection.X != 0 || _FinalMovementDirection.Y != 0)
+				_AnimInstance->SetCurrentSpeed(1);
+			else
+				_AnimInstance->SetCurrentSpeed(0);
 		}
 
 		SmoothRotationToDirection(DeltaTime);
@@ -241,6 +262,8 @@ void AMPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	/* Axis input bindings */
 	PlayerInputComponent->BindAxis("MoveForward", this, &AMPCharacter::MoveUp);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMPCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("LookUp", this, &AMPCharacter::LookUp);
+	PlayerInputComponent->BindAxis("LookRight", this, &AMPCharacter::LookRight);
 
 	/* Action input bindings */
 	PlayerInputComponent->BindAction("Block", EInputEvent::IE_Pressed, this, &AMPCharacter::StartedBlocking);
@@ -284,12 +307,32 @@ void AMPCharacter::MoveRight(float Value)
 	_FinalMovementDirection.Y = Value;
 }
 
+void AMPCharacter::LookUp(float Value)
+{
+	if(GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, TEXT("Looking Up"));
+	}
+
+	_LookDirection.X = Value;
+}
+
+void AMPCharacter::LookRight(float Value)
+{
+	_LookDirection.Y = Value;
+}
+
 void AMPCharacter::StartAttacking()
 {
 	_bIsAttacking = true;
 
 	if (_AnimInstance != NULL)
 		_AnimInstance->SetIsAttacking(true);
+
+	if (_SpecialWeaponEquiped != NULL)
+	{
+		_SpecialWeaponEquiped->Attack();
+	}
 
 	Server_SetAttacking(_bIsAttacking);
 }
@@ -371,8 +414,32 @@ void AMPCharacter::FinalMovement(float DeltaTime)
 
 void AMPCharacter::SmoothRotationToDirection(float DeltaTime)
 {
-	float GotoYaw = atan2(_LastMovementDirection.Y, _LastMovementDirection.X);
+	if (_bIsAttacking)
+		return;
+
+	if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Blue, _LookDirection.ToString());
+
+		if (_FinalMovementDirection.X != 0 || _FinalMovementDirection.Y != 0)
+		{
+			_LastMovementDirection = _FinalMovementDirection;
+		}
+	}
+
+	float GotoYaw = 0;
+
+	if (_LookDirection.X != 0 || _LookDirection.Y != 0)
+	{
+		GotoYaw = atan2(_LookDirection.Y, _LookDirection.X);
+		_LastMovementDirection.X = _LookDirection.X;
+		_LastMovementDirection.Y = _LookDirection.Y;
+	}
+	else
+		GotoYaw = atan2(_LastMovementDirection.Y, _LastMovementDirection.X);
+	
 	GotoYaw = GotoYaw * 57.2958; //convert to degrees
+
 	if (GotoYaw < 0) GotoYaw += 360;
 
 	float LerpSpeed = 10.0f;
@@ -404,7 +471,35 @@ void AMPCharacter::SmoothRotationToDirection(float DeltaTime)
 	GetMesh()->SetWorldRotation(FRotator(GetActorRotation().Pitch, GetActorRotation().Yaw - 90, GetActorRotation().Roll));
 
 	if (GetLocalRole() != ROLE_Authority && GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
 		Server_SetRotation(GetActorRotation());
+		Server_SetLookDirection(_LookDirection);
+	}
+}
+
+void AMPCharacter::PickupWeapon(AWeaponBase* Weapon)
+{
+	if (GetController() == NULL || Weapon == NULL || _SpecialWeaponEquiped != NULL)
+		return;
+
+	//Weapon->PickupWeapon(GetController(), this, "LeftWeaponShield");
+
+	//if (_SpecialWeaponEquiped != NULL)
+	//{
+	//	DropWeapons();
+	//}
+
+	Multicast_EquipNewWeapon(Weapon);
+}
+
+void AMPCharacter::DropWeapons()
+{
+	if(_SpecialWeaponEquiped != NULL)
+		_SpecialWeaponEquiped->DropWeapon();
+
+	//_LeftHandItem->SetVisibility(true);
+	//_RightHandItem->SetVisibility(true);
+	Multicast_EquipNewWeapon(NULL);
 }
 
 void AMPCharacter::CheckForHits()
@@ -503,8 +598,18 @@ bool AMPCharacter::Server_SetAttacking_Validate(bool bAttacking)
 
 void AMPCharacter::Server_SetAttacking_Implementation(bool bAttacking)
 {
-	_bIsAttacking = bAttacking;
-	_AttackDuration = 0.6f;
+	if (_SpecialWeaponEquiped == NULL)
+	{
+		_bIsAttacking = bAttacking;
+		_AttackDuration = 0.6f;
+	}
+	else
+	{
+		_bIsAttacking = bAttacking;
+		_AttackDuration = 0.6f;
+		_SpecialWeaponEquiped->Attack();
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("Player started Attacking!"));
 
 	if (_AnimInstance != NULL)
@@ -590,7 +695,7 @@ void AMPCharacter::SetupMeshes_Multicast_Implementation(uint8 HelmetID, uint8 Ha
 {
 	UE_LOG(LogTemp, Error, TEXT("Multicast_Imp!: %i "), HelmetID);
 	
-	GEngine->AddOnScreenDebugMessage(0, 5.0f, FColor::Red, "Multicast_SetupMesh!: " + HelmetID);
+	//GEngine->AddOnScreenDebugMessage(0, 5.0f, FColor::Red, "Multicast_SetupMesh!: " + HelmetID);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
@@ -674,13 +779,13 @@ void AMPCharacter::RequestItems_Client_Implementation()
 		return;
 	}
 
-	GEngine->AddOnScreenDebugMessage(1, 15.0f, FColor::Red, "ServerRequestedItems");
+	//GEngine->AddOnScreenDebugMessage(1, 15.0f, FColor::Red, "ServerRequestedItems");
 	UE_LOG(LogTemp, Error, TEXT("ServerRequestedItems"));
 
 	if (UMPGameInstance* GI = Cast<UMPGameInstance>(UGameplayStatics::GetGameInstance(GetWorld())))
 	{
 		FFinalCharacterGear Gear = GI->GetEquipedItems();
-		GEngine->AddOnScreenDebugMessage(2, 15.0f, FColor::Black, "ServerRequestedItems: " + Gear._HelmetID);
+		//GEngine->AddOnScreenDebugMessage(2, 15.0f, FColor::Black, "ServerRequestedItems: " + Gear._HelmetID);
 		UE_LOG(LogTemp, Error, TEXT("ItemEquiped_imp!: %i "), Gear._HelmetID);
 		SendItemsEquiped_Server(Gear._HelmetID, Gear._HairID, Gear._FaceID, Gear._ShouldersID,
 			Gear._BodyID, Gear._GlovesID, Gear._BeltID, Gear._ShoesID);
@@ -695,19 +800,79 @@ bool AMPCharacter::EquipWeapon_Multicast_Validate()
 
 void AMPCharacter::EquipWeapon_Multicast_Implementation()
 {
+	if (GetLocalRole() != ROLE_Authority)
+		return;
+
 	if (_LeftHandItem != NULL)
-	{
-		_LeftHandItem->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_lSocket");
-		_LeftHandItem->AddLocalRotation(FRotator(0, 0, 90));
-		_LeftHandItem->AddLocalOffset(FVector(10, 0, 0));
+	{		
+		//_LeftHandItem->SetWorldLocation(GetMesh()->GetBoneLocation("hand_lSocket"), EBoneSpaces::WorldSpace);
+		//_LeftHandItem->SetWorldRotation(GetMesh()->GetBoneQuaternion("hand_lSocket"), EBoneSpaces::WorldSpace);
+		//_LeftHandItem->AddLocalRotation(FRotator(0, 0, 90));
+		//_LeftHandItem->AddLocalOffset(FVector(10, 0, 0));
 	}
 
 	if (_RightHandItem != NULL)
 	{
-		_RightHandItem->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
-		_RightHandItem->AddLocalRotation(FRotator(0, 0, -90));
-		_RightHandItem->AddLocalOffset(FVector(-10, 3, 0));
+		//_RightHandItem->SetWorldLocation(GetMesh()->GetComponentLocation());//->GetBoneLocation("hand_rSocket"), EBoneSpaces::WorldSpace);
+		//_RightHandItem->SetWorldRotation(GetMesh()->GetBoneQuaternion());//->GetBoneQuaternion("hand_rSocket"), EBoneSpaces::WorldSpace);
+		//_RightHandItem->AddLocalRotation(FRotator(0, 0, -90));
+		//_RightHandItem->AddLocalOffset(FVector(-10, 3, 0));
 	}
+}
+
+bool AMPCharacter::Server_SetLookDirection_Validate(FVector2D LookDirection)
+{
+	return true;
+}
+
+void AMPCharacter::Server_SetLookDirection_Implementation(FVector2D LookDirection)
+{
+	_LookDirection = LookDirection;
+}
+
+bool AMPCharacter::Multicast_EquipNewWeapon_Validate(AWeaponBase* Weapon)
+{
+	return true;
+}
+
+void AMPCharacter::Multicast_EquipNewWeapon_Implementation(AWeaponBase* Weapon)
+{
+	if (Weapon != NULL)
+	{
+		_LeftHandItem->SetVisibility(false);
+		_RightHandItem->SetVisibility(false);
+		_SpecialWeaponEquiped = Weapon;
+
+		if (_AnimInstance != NULL)
+		{
+			_AnimInstance->SetWeaponType(1);
+		}
+
+		Weapon->PickupWeapon(GetController(), this, "LeftWeaponShield");
+	}
+	else
+	{
+		_LeftHandItem->SetVisibility(true);
+		_RightHandItem->SetVisibility(true);
+		_SpecialWeaponEquiped = NULL;
+
+		if (_AnimInstance != NULL)
+		{
+			_AnimInstance->SetWeaponType(0);
+		}
+	}
+}
+
+
+bool AMPCharacter::Server_EquipWeaponProperly_Validate()
+{
+	return true;
+}
+
+void AMPCharacter::Server_EquipWeaponProperly_Implementation()
+{
+	//EquipWeapon_Multicast();
+
 }
 
 void AMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -715,8 +880,10 @@ void AMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AMPCharacter, _FinalMovementDirection);
+	DOREPLIFETIME(AMPCharacter, _LookDirection);
 	DOREPLIFETIME(AMPCharacter, _bBlocking);
 	DOREPLIFETIME(AMPCharacter, _bIsAttacking);
 	DOREPLIFETIME(AMPCharacter, _Health);
 	DOREPLIFETIME(AMPCharacter, _EquipedGear);
 }
+

@@ -25,6 +25,11 @@ public:
 		void EscapePressed();
 
 	/*
+	* Add a new chat message to the ChatSystem Widget
+	*/
+	void AddNewChatMessage(FString DisplayName, FString Message);
+
+	/*
 	* Enable/disable chat system
 	*/
 	void EnableChatSystem(bool bEnable);
@@ -34,6 +39,21 @@ public:
 	*/
 	void EnablePreMatchStartUW(bool bEnable);
 
+	/*
+	* Enable/disable PreMatch Start UserWidget
+	*/
+	void EnablePlayerUIUW(bool bEnable);
+
+	/*
+	* Set the health of the health bar
+	*/
+	void SetHealthBar(const float CurrentHealth, const float PlayersMaxHealth);
+
+	/*
+	* Set the Timer by giving it the timer by string
+	*/
+	void SetTimeLeft(const FString TimerLeftText);
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
 	TAssetSubclassOf<class UChatSystemUI> _ChatSystemUW;
@@ -41,9 +61,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
 	TAssetSubclassOf<class UUserWidget> _PreMatchStartUW;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
+	TAssetSubclassOf<class UPlayerUI> _PlayerUIUW;
+
 private:
 	//Chat System
 	class UChatSystemUI* _ActiveChatSystemUW;
+
+	class UPlayerUI* _ActivePlayerUI;
 
 	void CreateChatSystemWidget();
 
@@ -51,4 +76,6 @@ private:
 	class UUserWidget* _ActivePreMatchStartUW;
 
 	void CreatePreMatchStartWidget();
+
+	void CreatePlayerUIWidget();
 };

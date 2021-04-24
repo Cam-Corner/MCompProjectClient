@@ -8,6 +8,7 @@
 #include "Utility/PIDController.h"
 #include "MPCharacter.generated.h"
 
+
 //class PIDController; 
 DECLARE_LOG_CATEGORY_EXTERN(LogAMPCharacter, Log, All);
 
@@ -62,6 +63,10 @@ protected:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetUnitVector(FVector UnitV);
 
+	/** Sets the unit Vector on the server */
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_SetLookDirection(FVector2D LookDirection);
+
 	UFUNCTION(Server, Reliable)
 		void Server_SetRotation(FRotator Rotation);
 
@@ -88,6 +93,12 @@ protected:
 		void SendItemsEquiped_Server(uint8 HelmetID, uint8 HairID, uint8 FaceID,
 			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
 		/*struct FFinalCharacterGear EquipedGear*/);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_EquipWeaponProperly();
+
+	UFUNCTION(NetMulticast, reliable, WithValidation)
+		void Multicast_EquipNewWeapon(class AWeaponBase* Weapon);
 
 	/** Equip a weapon for this actor and call on all clients */
 	UFUNCTION(NetMulticast, reliable, WithValidation)
@@ -129,6 +140,14 @@ protected:
 	/** Gets left and right movement input */
 	UFUNCTION()
 		void MoveRight(float Value);
+
+	/** Get up and down Look Direction input */
+	UFUNCTION()
+		void LookUp(float Value);
+
+	/** Gets left and right Look Direction input */
+	UFUNCTION()
+		void LookRight(float Value);
 
 	UFUNCTION()
 		void StartedBlocking();
@@ -200,9 +219,15 @@ protected:
 	UPROPERTY(Replicated)
 	FVector _FinalMovementDirection{ 0, 0, 0 };
 
-	/** Last direction that they faced */
+	/** The direction the other thumbstick is facing */
+	UPROPERTY(Replicated)
+	FVector2D _LookDirection{ 0, 0 };
+
+	/** Last direction that they moved */
 	FVector _LastMovementDirection{ 0, 0, 0 };
 
+	/** Last direction that they looked */
+	FVector _LastLookDirection2D{ 0, 0, 0 };
 	/*
 	* The actors that are in the swords collision box
 	* Only Useful for the server
@@ -233,4 +258,16 @@ protected:
 	PIDController _RotationPID{ 0.2f, 0.0f, 0.01f };
 
 	float CurrentYaw = 1;
+
+public:
+	/* Called when the actor needs to pickup a weapon */
+	virtual void PickupWeapon(class AWeaponBase* Weapon);
+
+	/* Called when the actor needs to drop a weapon that they are currently holding */
+	virtual void DropWeapons();
+
+	/* The Current Weapon that they are holding
+	* @Sword and shield are hidden because they are just hidden while using a special weapon
+	*/
+	class AWeaponBase* _SpecialWeaponEquiped;
 };

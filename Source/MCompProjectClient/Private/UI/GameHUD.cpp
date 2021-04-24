@@ -3,6 +3,7 @@
 
 #include "UI/GameHUD.h"
 #include "Networking/ChatSystemUI.h"
+#include "UI/PlayerUI.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY(LogAGameHUD);
@@ -30,6 +31,16 @@ AGameHUD::AGameHUD()
 	{
 		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget bluerping for PreMatchStart (Constructor Helpers)"));
 	}
+
+	static ConstructorHelpers::FClassFinder<UPlayerUI> PlayerUW(TEXT("/Game/UI/UW_PlayerUI"));
+	if (PlayerUW.Succeeded())
+	{
+		_PlayerUIUW = PlayerUW.Class;
+	}
+	else
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget bluerping for PlayerUI (Constructor Helpers)"));
+	}
 }
 
 void AGameHUD::BeginPlay()
@@ -40,7 +51,16 @@ void AGameHUD::BeginPlay()
 	{
 		CreateChatSystemWidget();
 		CreatePreMatchStartWidget();
+		CreatePlayerUIWidget();
 	}
+}
+
+void AGameHUD::SetTimeLeft(const FString TimerLeftText)
+{
+	if (_ActivePlayerUI == NULL)
+		return;
+
+	_ActivePlayerUI->SetTimeLeft(TimerLeftText);
 }
 
 void AGameHUD::CreateChatSystemWidget()
@@ -62,6 +82,22 @@ void AGameHUD::CreateChatSystemWidget()
 	//{
 	//	_ActiveChatSystemUW->AddNewChatMessage(FString("Turnips"), FString("Message" + FString::SanitizeFloat(i)));
 	//}
+}
+
+void AGameHUD::CreatePlayerUIWidget()
+{
+	if (_PlayerUIUW == NULL || _ActivePlayerUI != NULL)
+		return;
+
+	_ActivePlayerUI = CreateWidget<UPlayerUI>(GetOwningPlayerController(), _PlayerUIUW.LoadSynchronous());
+	if (_ActivePlayerUI == nullptr)
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not create widget: UPlayerUI"));
+		return;
+	}
+
+	_ActivePlayerUI->AddToViewport();
+	EnablePlayerUIUW(true);
 }
 
 void AGameHUD::CreatePreMatchStartWidget()
@@ -114,7 +150,7 @@ void AGameHUD::EnableChatSystem(bool bEnable)
 			PlayerOwner->bShowMouseCursor = true;
 			PlayerOwner->bEnableClickEvents = true;
 			PlayerOwner->bEnableMouseOverEvents = true;
-			PlayerOwner->SetInputMode(FInputModeUIOnly());
+			//PlayerOwner->SetInputMode(FInputModeUIOnly());
 		}
 
 		UE_LOG(LogAGameHUD, Warning, TEXT("Chat System Enabled"));
@@ -126,11 +162,40 @@ void AGameHUD::EnableChatSystem(bool bEnable)
 			PlayerOwner->bShowMouseCursor = false;
 			PlayerOwner->bEnableClickEvents = false;
 			PlayerOwner->bEnableMouseOverEvents = false;
-			PlayerOwner->SetInputMode(FInputModeGameOnly());
+			//PlayerOwner->SetInputMode(FInputModeGameOnly());
 		}
 
 		UE_LOG(LogAGameHUD, Warning, TEXT("Chat System Disabled"));
 	}
 
 	_ActiveChatSystemUW->EnableTyping(bEnable);
+}
+
+void AGameHUD::EnablePlayerUIUW(bool bEnable)
+{
+	if (_ActivePlayerUI == nullptr)
+		return;
+
+	if (bEnable)
+		_ActivePlayerUI->SetVisibility(ESlateVisibility::Visible);
+	else
+		_ActivePlayerUI->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AGameHUD::SetHealthBar(const float CurrentHealth, const float PlayersMaxHealth)
+{
+	if (_ActivePlayerUI == nullptr)
+		return;
+
+	float CurrentHealthPercent = (CurrentHealth / (PlayersMaxHealth / 100)) / 100;
+
+	_ActivePlayerUI->SetHealth(CurrentHealthPercent);
+}
+
+void AGameHUD::AddNewChatMessage(FString DisplayName, FString Message)
+{
+	if (_ActiveChatSystemUW == NULL)
+		return;
+
+	_ActiveChatSystemUW->AddNewChatMessage(DisplayName, Message);
 }

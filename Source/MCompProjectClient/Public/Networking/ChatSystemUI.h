@@ -37,6 +37,14 @@ private:
 
 	void UpdateChatMessagesUI();
 
+	UFUNCTION()
+	void CommitChatMessage(const FText& Text, ETextCommit::Type CommitMethod);
+
+
+	virtual FReply NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+
+	void SendChatMessage();
+
 private:	
 	UPROPERTY(meta = (BindWidget))
 	UMultiLineEditableText* _TypingTextBox;

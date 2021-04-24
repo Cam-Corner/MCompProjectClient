@@ -242,7 +242,7 @@ void AMPGameMode::Logout(AController* Exiting)
 
 void AMPGameMode::SendChatMessageToAllClients(const FChatMessage ChatMessage)
 {
-	for (APlayerController* PC : _PlayerControllers)
+	/*for (APlayerController* PC : _PlayerControllers)
 	{
 		AMPPlayerController* MPPC = Cast<AMPPlayerController>(PC);
 		if (MPPC != NULL)
@@ -253,5 +253,5 @@ void AMPGameMode::SendChatMessageToAllClients(const FChatMessage ChatMessage)
 		{
 			UE_LOG(LogAMPGameMode, Error, TEXT("Cannot cast PC to MPPC"));
 		}
-	}
+	}*/
 }

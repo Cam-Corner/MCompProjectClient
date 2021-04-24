@@ -2,6 +2,10 @@
 
 
 #include "Networking/ChatSystemUI.h"
+#include "Networking/MPPlayerState.h"
+#include "Networking/MPPlayerController.h"
+#include "Kismet/GameplayStatics.h"
+
 
 void UChatSystemUI::NativeConstruct()
 {
@@ -10,7 +14,9 @@ void UChatSystemUI::NativeConstruct()
 		_Messages.Add(" ");
 		
 	}
-	GEngine->AddOnScreenDebugMessage(9, 20.0f, FColor::Black, FString::SanitizeFloat(_Messages.Num()));
+
+
+	//GEngine->AddOnScreenDebugMessage(9, 20.0f, FColor::Black, FString::SanitizeFloat(_Messages.Num()));
 	{
 		_MessageBoxes.Add(_Message19);
 		_MessageBoxes.Add(_Message18);
@@ -33,6 +39,8 @@ void UChatSystemUI::NativeConstruct()
 		_MessageBoxes.Add(_Message01);
 		_MessageBoxes.Add(_Message00);
 	}
+
+	_TypingTextBox->OnTextCommitted.AddDynamic(this, &UChatSystemUI::CommitChatMessage);	
 }
 
 void UChatSystemUI::AddNewChatMessage(FString DisplayName, FString Message)
@@ -55,6 +63,73 @@ void UChatSystemUI::AddNewChatMessage(FString DisplayName, FString Message)
 	UpdateChatMessagesUI();
 }
 
+void UChatSystemUI::CommitChatMessage(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PC->bShowMouseCursor = false;
+		PC->bEnableClickEvents = false;
+		PC->bEnableMouseOverEvents = false;
+		//PC->SetInputMode(FInputModeGameOnly());
+	}
+
+	if (CommitMethod != ETextCommit::OnEnter)
+	{
+		_TypingTextBox->SetText(FText::FromString("Press 'T' to start typing..."));
+		FSlateApplication::Get().SetUserFocusToGameViewport(0);
+		return;
+	}
+
+	SendChatMessage();
+}
+
+FReply UChatSystemUI::NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Enter)
+	{
+		SendChatMessage();
+		return FReply::Handled();
+	}
+
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+		{
+			PC->bShowMouseCursor = false;
+			PC->bEnableClickEvents = false;
+			PC->bEnableMouseOverEvents = false;
+			//PC->SetInputMode(FInputModeGameOnly());
+		}
+
+		_TypingTextBox->SetText(FText::FromString("Press 'T' to start typing..."));
+		FSlateApplication::Get().SetUserFocusToGameViewport(0);
+	}
+
+	return FReply::Unhandled();
+}
+
+void UChatSystemUI::SendChatMessage()
+{
+	if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PC->bShowMouseCursor = false;
+		PC->bEnableClickEvents = false;
+		PC->bEnableMouseOverEvents = false;
+		//PC->SetInputMode(FInputModeGameOnly());
+
+		if (AMPPlayerState* PS = Cast<AMPPlayerState>(PC->PlayerState))
+		{
+			FChatMessage Message;
+			Message._ChatMessage = _TypingTextBox->GetText().ToString();
+			Message._ClientsUsername = PS->GetPlayerName();
+			PS->Server_SendChatMessage(Message);
+		}
+	}
+
+	_TypingTextBox->SetText(FText::FromString("Press 'T' to start typing..."));
+	FSlateApplication::Get().SetUserFocusToGameViewport(0);
+}
+
 void UChatSystemUI::UpdateChatMessagesUI()
 {
 	for (int i = 0; i < _MessageBoxes.Num(); i++)
@@ -74,12 +149,13 @@ void UChatSystemUI::EnableTyping(bool bEnable)
 	{
 		_TypingTextBox->SetVisibility(ESlateVisibility::Visible);
 		_TypingTextBox->SetKeyboardFocus();
-		
+		//FSlateApplication::Get().SetKeyboardFocus(_TypingTextBox, EFocusCause::SetDirectly);
 		UE_LOG(LogTemp, Warning, TEXT("Typing Enabled"));
+		_TypingTextBox->SetText(FText::FromString(""));
 	}
 	else
 	{
-		_TypingTextBox->SetVisibility(ESlateVisibility::Hidden);
+		_TypingTextBox->SetVisibility(ESlateVisibility::Visible);
 		UE_LOG(LogTemp, Warning, TEXT("Typing Disabled"));
 		
 	}

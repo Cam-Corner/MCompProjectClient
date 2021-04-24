@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MPGameInstance.h"
 #include "GameCamera.h"
+#include "Networking/MPGameState.h"
 #include "Networking/MPCamera.h"
 #include "UI/GameHUD.h"
 #include "GameFramework/Character.h"
@@ -85,9 +86,21 @@ void AMPPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		if (AGameHUD* HUD = Cast<AGameHUD>(GetHUD()))
+		{
+			if (AMPGameState* GS = Cast<AMPGameState>(UGameplayStatics::GetGameState(GetWorld())))
+			{
+				
+				HUD->SetTimeLeft(GS->GetTimeRemaining());
+			}
+		}
+	}
+
 	if (_CameraActor == NULL)
 	{
-		GEngine->AddOnScreenDebugMessage(0, 0.5f, FColor::Red, TEXT("AMPPlayerConller: _CameraActor is NULL!"));
+		//GEngine->AddOnScreenDebugMessage(0, 0.5f, FColor::Red, TEXT("AMPPlayerConller: _CameraActor is NULL!"));
 		return;
 	}
 
@@ -98,6 +111,8 @@ void AMPPlayerController::Tick(float DeltaTime)
 
 		_CameraActor->SetActorLocation(AP->GetActorLocation() + (Dir * 50));
 	}
+
+	
 }
 
 void AMPPlayerController::OnPossess(APawn* InPawn)
@@ -139,7 +154,7 @@ void AMPPlayerController::YawInput(float Value)
 {
 	if (Value != 0.0f)
 	{
-		GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
+		//GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
 		if (_bHasControl)
 		{
 			AddYawInput(Value * _CameraSensitivity);
@@ -153,7 +168,7 @@ void AMPPlayerController::PitchInput(float Value)
 	{
 		if (_bHasControl)
 		{
-			GEngine->AddOnScreenDebugMessage(5, 0.5f, FColor::Blue, TEXT("PitchControl"));
+			//GEngine->AddOnScreenDebugMessage(5, 0.5f, FColor::Blue, TEXT("PitchControl"));
 			AddPitchInput(Value * _CameraSensitivity);
 		}
 	}
@@ -180,7 +195,7 @@ void AMPPlayerController::AskClientToSetName_Implementation()
 //	CM.SetMessage(Username, ChatMessage);
 //	SendChatMessage(CM);
 //}
-
+/*
 bool AMPPlayerController::SendChatMessage_Validate(const FChatMessage ChatMessage)
 {
 	return true;
@@ -209,7 +224,7 @@ bool AMPPlayerController::ClientReceiveNewChatMessage_Validate(const FChatMessag
 void AMPPlayerController::ClientReceiveNewChatMessage_Implementation(const FChatMessage ChatMessage)
 {
 	//_LastReceivedMessage = ChatMessage;
-}
+}*/
 
 bool AMPPlayerController::SetClientsCamera_Validate()
 {
@@ -231,14 +246,14 @@ void AMPPlayerController::SetCameraToGameCamera()
 	for (AActor* AGC : GameCameras)
 	{
 		SetViewTarget(AGC);
-		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Changed camera to GameCamera"));
+		//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Changed camera to GameCamera"));
 		bSetCamera = true;
 		break;
 	}
 
 	if (!bSetCamera)
 	{
-		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Can't find Game Camera"));
+		//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Yellow, TEXT("Can't find Game Camera"));
 
 		UE_LOG(LogAMPPlayerController, Error, TEXT("Could not find game camera!"));
 
@@ -255,20 +270,10 @@ void AMPPlayerController::SetCameraToGameCamera()
 
 void AMPPlayerController::ToggleChat()
 {
-	if (_bTyping)
-		_bTyping = false;
-	else
-		_bTyping = true;
-
 	if (_GameHUD != NULL)
 	{
-		_GameHUD->EnableChatSystem(_bTyping);
-
-		if (!_bTyping)
-		{
-
-		}
+		_GameHUD->EnableChatSystem(true);
 	}
 
-	UE_LOG(LogAMPPlayerController, Warning, TEXT("Chat Key Pressed"));
+	//UE_LOG(LogAMPPlayerController, Warning, TEXT("Chat Key Pressed"));
 }

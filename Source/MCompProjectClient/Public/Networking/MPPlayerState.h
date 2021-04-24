@@ -6,6 +6,27 @@
 #include "GameFramework/PlayerState.h"
 #include "MPPlayerState.generated.h"
 
+USTRUCT(BlueprintType)
+struct FChatMessage
+{
+	GENERATED_BODY()
+
+		UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		FString _ClientsUsername = "Unknown";
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		FString _ChatMessage = "...";
+
+public:
+	void SetMessage(const FString& Username, const FString& ChatMessage)
+	{
+		_ClientsUsername = Username;
+		_ChatMessage = ChatMessage;
+	}
+};
+
+DECLARE_LOG_CATEGORY_EXTERN(LogAMPPlayerState, Log, All);
+
 /**
  * 
  */
@@ -48,6 +69,18 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable)
 	void GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deaths);
+
+	/*
+	* Send a chat message to the server to be rpc to all clients
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_SendChatMessage(const FChatMessage& Message);
+
+	/*
+	* Send the message to all clients
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_SendChatMessageToEveryone(const FChatMessage& Message);
 
 protected:
 	UPROPERTY(Replicated)

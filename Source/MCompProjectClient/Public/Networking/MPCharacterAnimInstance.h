@@ -24,6 +24,12 @@ public:
 
 	void SetIsAttacking(bool bIsAttacking) { _bIsAttacking = bIsAttacking; }
 
+	/* ID To set the current weapon type and used for selecting the right animations
+	* @0 = Sword & Shield
+	* @1 = Bow & Arrow
+	*/
+	void SetWeaponType(const uint8 Type) { _WeaponType = Type; }
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		float _CurrentSpeed{ 0 };
@@ -33,4 +39,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		bool _bIsAttacking{ false };
+
+	/* ID To set the current weapon type and used for selecting the right animations
+	* @0 = Sword & Shield
+	* @1 = Bow & Arrow
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		uint8 _WeaponType = 0;
 };

@@ -2,11 +2,16 @@
 
 #include "Networking/MPPlayerState.h"
 #include "Networking/MPGameState.h"
+#include "Networking/MPPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "MPGameInstance.h"
+#include "UI/GameHUD.h"
 #include "Engine/World.h"
 #include "CoreGlobals.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/World.h"
+
+DEFINE_LOG_CATEGORY(LogAMPPlayerState);
 
 AMPPlayerState::AMPPlayerState()
 {
@@ -54,6 +59,33 @@ void AMPPlayerState::GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deat
 	PlayerName = GetPlayerName();
 	Kills = _Kills;
 	Deaths = _Deaths;
+}
+
+bool AMPPlayerState::Server_SendChatMessage_Validate(const FChatMessage& Message)
+{
+	return true;
+}
+
+void AMPPlayerState::Server_SendChatMessage_Implementation(const FChatMessage& Message)
+{
+	UE_LOG(LogAMPPlayerState, Display, TEXT("(New Chat Message) %s: %s"), *Message._ClientsUsername, *Message._ChatMessage);
+	Multicast_SendChatMessageToEveryone(Message);
+}
+
+bool AMPPlayerState::Multicast_SendChatMessageToEveryone_Validate(const FChatMessage& Message)
+{
+	return true;
+}
+
+void AMPPlayerState::Multicast_SendChatMessageToEveryone_Implementation(const FChatMessage& Message)
+{
+	if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (AGameHUD* HUD = Cast<AGameHUD>(PC->GetHUD()))
+		{
+			HUD->AddNewChatMessage(Message._ClientsUsername, Message._ChatMessage);
+		}
+	}
 }
 
 void AMPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

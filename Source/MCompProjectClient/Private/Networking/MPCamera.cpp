@@ -37,7 +37,7 @@ void AMPCamera::YawInput(float Value)
 {
 	if (Value != 0.0f)
 	{
-		GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
+		//GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
 
 	}
 }
@@ -46,7 +46,7 @@ void AMPCamera::PitchInput(float Value)
 {
 	if (Value != 0.0f)
 	{
-		GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
+		//GEngine->AddOnScreenDebugMessage(4, 0.5f, FColor::Blue, TEXT("YawControl"));
 		
 	}
 }

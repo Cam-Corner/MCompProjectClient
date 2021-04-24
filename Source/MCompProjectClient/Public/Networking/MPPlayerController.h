@@ -11,24 +11,6 @@
  */
 DECLARE_LOG_CATEGORY_EXTERN(LogAMPPlayerController, Log, All);
 
-USTRUCT(BlueprintType)
-struct FChatMessage
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FString _ClientsUsername = "Unknown";
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FString _ChatMessage = "...";
-
-public:
-	void SetMessage(const FString& Username, const FString& ChatMessage)
-	{
-		_ClientsUsername = Username;
-		_ChatMessage = ChatMessage;
-	}
-};
 
 UCLASS()
 class MCOMPPROJECTCLIENT_API AMPPlayerController : public APlayerController
@@ -50,11 +32,11 @@ public:
 	//UFUNCTION(Client, Reliable)
 	//	void Client_SetHasControl(bool bHasControl);
 
-	UFUNCTION(Server, Reliable, WithValidation)
-		void SendChatMessage(const FChatMessage ChatMessage);
-	
-	UFUNCTION(Client, Reliable, WithValidation)
-		void ClientReceiveNewChatMessage(const FChatMessage ChatMessage);
+	//UFUNCTION(Server, Reliable, WithValidation)
+	//	void SendChatMessage(const FChatMessage& ChatMessage);
+	//
+	//UFUNCTION(Client, Reliable, WithValidation)
+	//	void ClientReceiveNewChatMessage(const FChatMessage& ChatMessage);
 	//
 	//UFUNCTION(BlueprintCallable)
 	//	void SendChatMessage_BP(const FString& ChatMessage);
@@ -91,7 +73,7 @@ private:
 
 	float _CameraSensitivity{ 12.0f };
 
-	FChatMessage _LastReceivedMessage;
+	//FChatMessage _LastReceivedMessage;
 
 	/** Is the player allowed to control this pawn at this current moment */
 	bool _bHasControl{ true };
