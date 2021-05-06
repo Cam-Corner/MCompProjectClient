@@ -8,24 +8,74 @@
 #include "Kismet/GameplayStatics.h"
 #include "UI/SCustomizeCharacterWidget.h"
 #include "Other/CharacterCustomiserActor.h"
+#include "UI/MainMenuUW.h"
+#include "UObject/ConstructorHelpers.h"
+#include "MPGameInstance.h"
 
+
+DEFINE_LOG_CATEGORY(LogAMainMenuHUD);
+
+AMainMenuHUD::AMainMenuHUD()
+{
+	static ConstructorHelpers::FClassFinder<UMainMenuUW> MainMenuUW(TEXT("/Game/UI/UW_MainMenu"));
+	if (MainMenuUW.Succeeded())
+	{
+		_MainMenuUW = MainMenuUW.Class;
+	}
+	else
+	{
+		UE_LOG(LogAMainMenuHUD, Error, TEXT("Coud not find widget blueprint for MainMenuUW (Constructor Helpers)"));
+	}
+}
+
+void AMainMenuHUD::BeginPlay()
+{
+	Super::BeginPlay();
+
+	//if (GetLocalRole() != ROLE_Authority)
+	//{
+		//CreateMainMenuUW();
+		//EnableMainMenuUW(false);
+	//}
+
+}
+
+void AMainMenuHUD::Tick(float DeltaTime)
+{
+
+}
 
 void AMainMenuHUD::ShowMainMenu()
 {
-	if (GEngine && GEngine->GameViewport)
+	//if (GEngine && GEngine->GameViewport)
+	//{
+	//	_MainMenuWidget = SNew(SMainMenuWidget).OwningHUD(this);
+	//	GEngine->GameViewport->AddViewportWidgetContent(SAssignNew(_MainMenuContainer, SWeakWidget)
+	//		.PossiblyNullContent(_MainMenuWidget.ToSharedRef()));
+	//
+	//	
+	//
+	//	if (PlayerOwner)
+	//	{
+	//		PlayerOwner->bShowMouseCursor = true;
+	//		PlayerOwner->bEnableClickEvents = true;
+	//		PlayerOwner->bEnableMouseOverEvents = true;
+	//		PlayerOwner->SetInputMode(FInputModeUIOnly());
+	//	}
+	//}
+
+	//ChangeUITabTo(EMenuTypes::EMT_MainMenu);
+	CreateMainMenuUW();
+	EnableMainMenuUW(true);
+
+	if (UMPGameInstance* GI = Cast<UMPGameInstance>(UGameplayStatics::GetGameInstance(GetWorld())))
 	{
-		_MainMenuWidget = SNew(SMainMenuWidget).OwningHUD(this);
-		GEngine->GameViewport->AddViewportWidgetContent(SAssignNew(_MainMenuContainer, SWeakWidget)
-			.PossiblyNullContent(_MainMenuWidget.ToSharedRef()));
-
-		
-
-		if (PlayerOwner)
+		if (GI->WasPlayerKickedFromServer())
 		{
-			PlayerOwner->bShowMouseCursor = true;
-			PlayerOwner->bEnableClickEvents = true;
-			PlayerOwner->bEnableMouseOverEvents = true;
-			PlayerOwner->SetInputMode(FInputModeUIOnly());
+			if (_ActiveMainMenuUW != NULL)
+			{
+				_ActiveMainMenuUW->SetKickReason(GI->GetKickReason());
+			}
 		}
 	}
 }
@@ -51,7 +101,8 @@ void AMainMenuHUD::ChangeUITabTo(const EMenuTypes Menu)
 	switch(_CurrentMenu)
 	{
 	case EMT_MainMenu:
-		RemoveMainMenu();
+		EnableMainMenuUW(false);
+		//RemoveMainMenu();
 		break;
 	case EMT_CustomizationTab:
 		RemoveCustomisationUI();
@@ -63,7 +114,8 @@ void AMainMenuHUD::ChangeUITabTo(const EMenuTypes Menu)
 	switch (Menu)
 	{
 	case EMT_MainMenu:
-		ShowMainMenu();
+		EnableMainMenuUW(true);
+		//ShowMainMenu();
 		break;
 	case EMT_CustomizationTab:
 		ShowCustomisationUI();
@@ -115,4 +167,31 @@ void AMainMenuHUD::RemoveCustomisationUI()
 			CC->SetVisibility(false);
 		}
 	}
+}
+
+void AMainMenuHUD::CreateMainMenuUW()
+{
+	if (_MainMenuUW == NULL || _ActiveMainMenuUW != NULL)
+		return;
+
+	_ActiveMainMenuUW = CreateWidget<UMainMenuUW>(GetOwningPlayerController(), _MainMenuUW.LoadSynchronous());
+	if (_ActiveMainMenuUW == nullptr)
+	{
+		UE_LOG(LogAMainMenuHUD, Error, TEXT("Could not create widget: MainMenuUW"));
+		return;
+	}
+
+	_ActiveMainMenuUW->AddToViewport();
+	EnableMainMenuUW(false);
+}
+
+void AMainMenuHUD::EnableMainMenuUW(bool bEnable)
+{
+	if (_ActiveMainMenuUW == nullptr)
+		return;
+
+	if (bEnable)
+		_ActiveMainMenuUW->SetVisibility(ESlateVisibility::Visible);
+	else
+		_ActiveMainMenuUW->SetVisibility(ESlateVisibility::Hidden);
 }

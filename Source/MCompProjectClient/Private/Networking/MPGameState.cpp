@@ -4,6 +4,8 @@
 
 #include "Networking/MPGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "Networking/MPGameMode.h"
+#include "Kismet/GameplayStatics.h"
 //#include "EngineUtils.h"
 
 AMPGameState::AMPGameState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -22,7 +24,21 @@ void AMPGameState::Tick(float DeltaTime)
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		_TimerRemaining -= DeltaTime;
+
+		if (_TimerRemaining <= 0)
+		{	
+			if (AMPGameMode* GameMode = Cast<AMPGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+			{
+				GameMode->EndMatch();
+				
+			}
+		}
 	}
+}
+
+void AMPGameState::Restart()
+{
+	_TimerRemaining = 20.0f;
 }
 
 FString AMPGameState::GetTimeRemaining()

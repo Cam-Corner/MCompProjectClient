@@ -28,6 +28,19 @@ void AArrow::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	AddActorWorldOffset(GetActorForwardVector() * (_ArrowSpeed * DeltaTime));
+	
+	if(GetLocalRole() == ROLE_Authority)
+		AddActorWorldOffset(GetActorForwardVector() * (_ArrowSpeed * DeltaTime));
 }
+
+void AArrow::Mulitcast_UpdatePosition_Implementation(FVector StartPos, float CurrentDeltaTime)
+{
+
+}
+
+void AArrow::Server_RequestPosUpdate_Implementation()
+{
+
+}
+
 

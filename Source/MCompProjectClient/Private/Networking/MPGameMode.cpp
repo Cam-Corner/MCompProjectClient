@@ -15,6 +15,7 @@
 #include "UI/GameHUD.h"
 #include "Networking/MPCamera.h"
 
+
 DEFINE_LOG_CATEGORY(LogAMPGameMode);
 
 AMPGameMode::AMPGameMode()
@@ -28,6 +29,12 @@ AMPGameMode::AMPGameMode()
 	GameStateClass = AMPGameState::StaticClass();
 
 	_bGameCanStart = false;
+	bUseSeamlessTravel = false;
+
+	for (int i = 0; i < 3; i++)
+	{
+		_MapVotes.Add(0);
+	}
 }
 
 bool AMPGameMode::ReadyToStartMatch_Implementation()
@@ -45,26 +52,30 @@ void AMPGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	_PlayerControllers.Add(NewPlayer);
-
 	//NewPlayer->PlayerState->SetPlayerName("Unknown Name");
 
 	AMPPlayerController* MPController = Cast<AMPPlayerController>(NewPlayer);
 
 	if (MPController)
 	{
+		if (_PlayerControllers.Num() >= 4)
+			MPController->Client_KickFromServer("Server Full!");
+		else
+			_PlayerControllers.Add(NewPlayer);
+		
 		MPController->AskClientToSetName();
 		UE_LOG(LogAMPGameMode, Display, TEXT("Asking client for display name..."));
 	}
 	else
 		UE_LOG(LogAMPGameMode, Error, TEXT("Using wrong player controller!"));
 
-	if (_PlayerControllers.Num() >= 1 && GetMatchState() == MatchState::WaitingToStart)
+	if (_PlayerControllers.Num() >= 2 && GetMatchState() == MatchState::WaitingToStart)
 	{
 		//_bGameStarted = true;
 		//StartMatch();
 		_bGameCanStart = true;
 		MPController->SetClientsCamera();
+		MPController->Client_GameStarted(true);
 	}
 }
 
@@ -77,6 +88,7 @@ void AMPGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewP
 		if (AMPPlayerController* MPPC = Cast<AMPPlayerController>(NewPlayer))
 		{
 			MPPC->SetClientsCamera();
+			MPPC->Client_GameStarted(true);
 			//SpawnPlayerCamera(NewPlayer);
 		}
 	}
@@ -89,8 +101,11 @@ void AMPGameMode::HandleMatchHasStarted()
 	for (APlayerController* PC : _PlayerControllers)
 	{
 		if (AMPPlayerController* MPPC = Cast<AMPPlayerController>(PC))
+		{
 			//SpawnPlayerCamera(MPPC);
 			MPPC->SetClientsCamera();
+			MPPC->Client_GameStarted(true);
+		}
 	}
 }
 
@@ -99,6 +114,46 @@ void AMPGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	_MaxNumberOfPlayers = FCString::Atoi(*(UGameplayStatics::ParseOption(OptionsString, "_MaxNumberOfPlayers")));
+}
+
+void AMPGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (_bVotingForMap)
+	{
+		_VotingTimer -= DeltaTime;
+
+		if (_VotingTimer <= 0)
+		{
+			int IndexWinningVote = 0;
+			int8 AmountOfVotes = 0;
+
+			for(int i = 1; i < _MapVotes.Num(); i++)
+			{
+				if (_MapVotes[i] > AmountOfVotes)
+				{
+					AmountOfVotes = _MapVotes[i];
+					IndexWinningVote = i;
+				}
+			}
+
+			if (IndexWinningVote == 0)
+			{
+				int8 Ran = FMath::RandRange(1, 2);
+				IndexWinningVote = Ran;
+			}
+			
+			if (IndexWinningVote == 1)
+			{
+				LoadLevel(LEVEL_FORREST);
+			}
+			else if (IndexWinningVote == 2)
+			{
+				LoadLevel(LEVEL_EXAMPLEMAP);
+			}
+		}
+	}
 }
 
 void AMPGameMode::RestartPlayer(AController* Player)
@@ -145,6 +200,7 @@ void AMPGameMode::RestartPlayer(AController* Player)
 	if (PC != NULL)
 	{
 		PC->SetClientsCamera();
+		PC->Client_GameStarted(true);
 		//UE_LOG(LogAMPGameMode, Warning, TEXT("Sent Request for clients to change their camera to the GameCamera!"));
 		if (AMPCharacter* MPPC = Cast<AMPCharacter>(PC->GetPawn()))
 		{
@@ -168,7 +224,11 @@ void AMPGameMode::PlayerAttackedPlayer(AActor* AttackerActor, AController* Attac
 			{
 				if (!BlockedShot(AttackerChar, MPC))
 				{
-					MPC->RemoveSomeHP(50, DamagedC->PlayerState->GetPlayerName());
+					MPC->RemoveSomeHP(10, DamagedC->PlayerState->GetPlayerName());
+					FVector2D Direction = (DamagedActor->GetActorLocation().X, DamagedActor->GetActorLocation().Y)
+						- (AttackerChar->GetActorLocation().X, AttackerChar->GetActorLocation().Y);
+					Direction.Normalize();
+					MPC->Multicast_KnockBack(400.0f, Direction);
 
 					if (MPC->GetHealth() <= 0)
 					{
@@ -239,6 +299,63 @@ void AMPGameMode::Logout(AController* Exiting)
 		_PlayerControllers.Remove(ExitingPC);
 	}
 }
+
+void AMPGameMode::ChangeMapVote(int8 CurrentMapVote, int8 NewMapVote)
+{
+	if (CurrentMapVote < 0 || CurrentMapVote >= _MapVotes.Num() || NewMapVote < 0 || NewMapVote >= _MapVotes.Num())
+		return;
+
+	_MapVotes[CurrentMapVote] -= 1;
+	_MapVotes[NewMapVote] += 1;
+}
+
+void AMPGameMode::LoadLevel(const FString LevelToLoad)
+{
+	for (APlayerController* PC : _PlayerControllers)
+	{
+		if (AMPPlayerController* MPPC = Cast<AMPPlayerController>(PC))
+		{
+			MPPC->Client_TravelingToNewMap(true);
+		}
+	}
+
+	GetWorld()->ServerTravel(LevelToLoad);
+}
+
+
+void AMPGameMode::EndMatch()
+{
+	Super::EndMatch();
+
+	_bGameCanStart = false;
+
+	if (AMPGameState* GS = Cast<AMPGameState>(GameState))
+	{
+		GS->Restart();
+		
+	}
+
+	//LoadLevel(LEVEL_FORREST);
+
+	_MapVotes[0] = _PlayerControllers.Num();
+
+	for (int i = 1; i < _MapVotes.Num(); i++)
+	{
+		_MapVotes[i] = 0;
+	}
+	_bVotingForMap = true;
+
+	for (APlayerController* PC : _PlayerControllers)
+	{
+		if (AMPPlayerController* MPPC = Cast<AMPPlayerController>(PC))
+		{
+			MPPC->Client_GameEnded();
+		}
+	}
+
+	//GetWorld()->ServerTravel("/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap");//?listen?game=FFA");
+}
+
 
 void AMPGameMode::SendChatMessageToAllClients(const FChatMessage ChatMessage)
 {

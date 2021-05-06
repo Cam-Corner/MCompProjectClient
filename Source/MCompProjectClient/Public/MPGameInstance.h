@@ -42,12 +42,22 @@ public:
 	void SetEquipedGear(FFinalCharacterGear EquipedGear) { _EquipedGear = EquipedGear; }
 
 	FFinalCharacterGear GetEquipedItems() { return _EquipedGear; }
+
+	void SetKickReason(const FString& KickReason) { _KickReason = KickReason; _bKickedFromServer = true; }
+
+	FString GetKickReason() { _bKickedFromServer = false;  return _KickReason; }
+
+	UFUNCTION(BlueprintCallable)
+	bool WasPlayerKickedFromServer() { return _bKickedFromServer; }
 private:
-	FString _PlayerName{ "No Name Given" };
+	FString _PlayerName{ "" };
 
 	class UItemData* _Items;
 
 	FFinalCharacterGear _EquipedGear;
+
+	FString _KickReason{ " Unknown " };
+	bool _bKickedFromServer = false;
 
 	//TArray<FChatMessage> _ClientChatMessages;
 };

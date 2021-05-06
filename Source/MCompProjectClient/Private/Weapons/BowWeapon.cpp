@@ -79,6 +79,8 @@ void ABowWeapon::Attack()
 		AActor* Arrow = GetWorld()->SpawnActor(_ArrowClass);
 		Arrow->SetActorRotation(FRotator(0, GetActorRotation().Yaw, 0));
 		Arrow->SetActorLocation(GetActorLocation() + (GetActorForwardVector() * 5));
+		Arrow->SetOwner(GetOwner());
+
 	}
 
 	_ArrowsLeft -= 1;

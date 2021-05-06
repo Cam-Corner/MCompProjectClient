@@ -25,6 +25,7 @@
 #include "Weapons/WeaponBase.h"
 #include "MPGameInstance.h"
 #include "ItemData.h"
+//#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY(LogAMPCharacter);
 // Sets default values
@@ -152,6 +153,11 @@ void AMPCharacter::BeginPlay()
 			_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID, 
 			_EquipedGear._ShoesID);
 
+		if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+		{
+			//PC->Server_UpdateItems();
+		}
+
 		Server_EquipWeaponProperly();
 	}
 	else
@@ -194,6 +200,40 @@ void AMPCharacter::Tick(float DeltaTime)
 	//}
 	//else
 	//	_TempTimer -= DeltaTime;
+
+	/*if (_KnockBackAmount > 0)
+	{
+		//GetCharacterMovement()->MaxWalkSpeed = 2000;
+		//Move Player Backwards
+		//if (GetLocalRole() != ROLE_Authority && 
+		//	GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))						
+		//	//AddMovementInput(FVector(_KnockBackDir, 0), _KnockBackSpeedMultiplier);
+		//if (GetLocalRole() == ROLE_Authority)
+		//check how much they have moved
+		FVector2D NewPos;
+		NewPos.X = GetActorLocation().X;
+		NewPos.Y = GetActorLocation().Y;
+		
+		float Distance = FVector2D::Distance(NewPos, OldPos);
+		
+		_KnockBackAmount -= Distance;
+		
+		FString DebugMessage = "KnockBack Amount: " + FString::SanitizeFloat(_KnockBackAmount) +
+			" || Distance: " + FString::SanitizeFloat(Distance) + 
+			" || OldPos: " + OldPos.ToString() + " || NewPos:" + NewPos.ToString();
+		
+		if(GetLocalRole() != ROLE_Authority)
+			GEngine->AddOnScreenDebugMessage(5, 1.0f, FColor::Yellow, DebugMessage);
+		
+		_bBlocking = false;
+		_bIsAttacking = false;
+		
+		SmoothRotationToDirection(DeltaTime);
+		
+		//Save old pos
+		OldPos = NewPos;
+		return;
+	}*/
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
@@ -254,6 +294,14 @@ void AMPCharacter::Tick(float DeltaTime)
 	}
 }
 
+/*void AMPCharacter::Multicast_SendPlayersMyEquiptment_Implementation()
+{
+	SetupSkeletalCharacterMeshes(_EquipedGear._HelmetID, _EquipedGear._HairID, _EquipedGear._FaceID,
+		_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID,
+		_EquipedGear._ShoesID);
+
+}*/
+
 // Called to bind functionality to input
 void AMPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -270,6 +318,13 @@ void AMPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	//PlayerInputComponent->BindAction("Block", EInputEvent::IE_Released, this, &AMPCharacter::StoppedBlocking);
 	PlayerInputComponent->BindAction("Attack", EInputEvent::IE_Pressed, this, &AMPCharacter::StartAttacking);
 	PlayerInputComponent->BindAction("Quit", EInputEvent::IE_Pressed, this, &AMPCharacter::QuitGame);
+}
+
+void AMPCharacter::Multicast_KnockBack_Implementation(float Distance, FVector2D Direction)
+{
+	_KnockBackDir = Direction;
+	_KnockBackAmount = Distance;
+	LaunchCharacter(FVector(_KnockBackDir * (_KnockBackSpeedMultiplier), 0), true, true);
 }
 
 void AMPCharacter::Restart()
@@ -311,7 +366,7 @@ void AMPCharacter::LookUp(float Value)
 {
 	if(GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
-		GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, TEXT("Looking Up"));
+		//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, TEXT("Looking Up"));
 	}
 
 	_LookDirection.X = Value;
@@ -419,7 +474,7 @@ void AMPCharacter::SmoothRotationToDirection(float DeltaTime)
 
 	if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
-		GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Blue, _LookDirection.ToString());
+		//GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Blue, _LookDirection.ToString());
 
 		if (_FinalMovementDirection.X != 0 || _FinalMovementDirection.Y != 0)
 		{
@@ -707,6 +762,8 @@ void AMPCharacter::SetupMeshes_Multicast_Implementation(uint8 HelmetID, uint8 Ha
 		_EquipedGear._GlovesID = GlovesID;
 		_EquipedGear._BeltID = BeltID;
 		_EquipedGear._ShoesID = ShoesID;
+
+
 	}
 
 	SetupSkeletalCharacterMeshes(HelmetID, HairID, FaceID, ShouldersID, BodyID, GlovesID, BeltID, ShoesID);
@@ -863,7 +920,6 @@ void AMPCharacter::Multicast_EquipNewWeapon_Implementation(AWeaponBase* Weapon)
 	}
 }
 
-
 bool AMPCharacter::Server_EquipWeaponProperly_Validate()
 {
 	return true;
@@ -885,5 +941,13 @@ void AMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AMPCharacter, _bIsAttacking);
 	DOREPLIFETIME(AMPCharacter, _Health);
 	DOREPLIFETIME(AMPCharacter, _EquipedGear);
-}
+	//DOREPLIFETIME(AMPCharacter, _HelmetID);
+	/*DOREPLIFETIME(AMPCharacter, _HairID);
+	DOREPLIFETIME(AMPCharacter, _FaceID);
+	DOREPLIFETIME(AMPCharacter, _ShouldersID);
+	DOREPLIFETIME(AMPCharacter, _GlovesID);
+	DOREPLIFETIME(AMPCharacter, _BeltID);
+	DOREPLIFETIME(AMPCharacter, _ShoesID);
+	DOREPLIFETIME(AMPCharacter, _BodyID);*/
 
+}

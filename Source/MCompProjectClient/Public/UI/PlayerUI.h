@@ -30,5 +30,4 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* _TimeLeft;
 
-
 };

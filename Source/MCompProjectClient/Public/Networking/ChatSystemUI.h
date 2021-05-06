@@ -7,6 +7,9 @@
 #include "Components/TextBlock.h"
 #include "Components/MultiLineEditableTextBox.h"
 #include "Components/MultiLineEditableText.h"
+#include "Components/ScrollBox.h"
+#include "Components/CanvasPanel.h"
+#include "Components/RichTextBlock.h"
 #include "ChatSystemUI.generated.h"
 
 
@@ -33,7 +36,7 @@ public:
 
 private:
 	TArray<FString> _Messages;
-	TArray<UTextBlock*> _MessageBoxes;
+	TArray<URichTextBlock*> _MessageBoxes;
 
 	void UpdateChatMessagesUI();
 
@@ -50,63 +53,69 @@ private:
 	UMultiLineEditableText* _TypingTextBox;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* _Message00;
+	UCanvasPanel* _CanvasPanel;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message01;
+	UScrollBox* _ChatMessagesScrollBox;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message02;
+	URichTextBlock* _Message00;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message03;
+		URichTextBlock* _Message01;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message04;
+		URichTextBlock* _Message02;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message05;
+		URichTextBlock* _Message03;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message06;
+		URichTextBlock* _Message04;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message07;
+		URichTextBlock* _Message05;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message08;
+		URichTextBlock* _Message06;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message09;
+		URichTextBlock* _Message07;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message10;
+		URichTextBlock* _Message08;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message11;
+		URichTextBlock* _Message09;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message12;
+		URichTextBlock* _Message10;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message13;
+		URichTextBlock* _Message11;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message14;
+		URichTextBlock* _Message12;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message15;
+		URichTextBlock* _Message13;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message16;
+		URichTextBlock* _Message14;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message17;
+		URichTextBlock* _Message15;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message18;
+		URichTextBlock* _Message16;
 
 	UPROPERTY(meta = (BindWidget))
-		UTextBlock* _Message19;
+		URichTextBlock* _Message17;
+
+	UPROPERTY(meta = (BindWidget))
+		URichTextBlock* _Message18;
+
+	UPROPERTY(meta = (BindWidget))
+		URichTextBlock* _Message19;
 
 };

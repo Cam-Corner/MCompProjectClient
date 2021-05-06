@@ -9,7 +9,9 @@
 #include "MPGameInstance.h"
 #include "GameCamera.h"
 #include "Networking/MPGameState.h"
+#include "MPGameInstance.h"
 #include "Networking/MPCamera.h"
+#include "Networking/MPCharacter.h"
 #include "UI/GameHUD.h"
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
@@ -55,19 +57,13 @@ void AMPPlayerController::BeginPlay()
 		//InputComponent->BindAction("SendChatMessage", IE_Pressed, GHUD, &AGameHUD::EscapePressed);
 		_GameHUD = GHUD;
 		_GameHUD->EnablePreMatchStartUW(true);
+		_GameHUD->UpdateScoreboard();
 	}
 	else
 	{
 		UE_LOG(LogAMPPlayerController, Warning, TEXT("AGameHUD NOT Loaded"));
 	}
-}
 
-void AMPPlayerController::Client_GameStarted_Implementation()
-{
-	if (_GameHUD != NULL)
-	{
-		_GameHUD->EnablePreMatchStartUW(false);
-	}
 }
 
 void AMPPlayerController::SetupInputComponent()
@@ -80,6 +76,22 @@ void AMPPlayerController::SetupInputComponent()
 	}
 
 	InputComponent->BindAction("ChatKey", IE_Pressed, this, &AMPPlayerController::ToggleChat);
+
+	InputComponent->BindAction("ScoreboardKey", IE_Pressed, this, &AMPPlayerController::EnableScoreboard);
+	InputComponent->BindAction("ScoreboardKey", IE_Released, this, &AMPPlayerController::DisableScoreboard);
+}
+
+void AMPPlayerController::Server_UpdateItems_Implementation()
+{
+	TArray<AActor*> Characters;
+
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AMPCharacter::StaticClass(), Characters);
+
+	for(AActor* Char : Characters)
+	{
+		//if(AMPCharacter* MPC = Cast<AMPCharacter>(Char))
+			//MPC->Multicast_SendPlayersMyEquiptment();
+	}
 }
 
 void AMPPlayerController::Tick(float DeltaTime)
@@ -186,7 +198,21 @@ void AMPPlayerController::AskClientToSetName_Implementation()
 
 }
 
+void AMPPlayerController::Client_GameStarted_Implementation(bool bStarted)
+{
+	if (_GameHUD == NULL)
+		return;
 
+	if (bStarted)
+	{
+		
+		_GameHUD->EnablePreMatchStartUW(false);
+	}
+	else
+	{
+		_GameHUD->EnablePreMatchStartUW(true);
+	}
+}
 
 //void AMPPlayerController::SendChatMessage_BP(const FString& ChatMessage)
 //{
@@ -267,6 +293,17 @@ void AMPPlayerController::SetCameraToGameCamera()
 //	_bHasControl = bHasControl; 
 //}
 
+void AMPPlayerController::EnableScoreboard()
+{
+	if (_GameHUD != NULL)
+		_GameHUD->EnableScoreboardUW(true);
+}
+
+void AMPPlayerController::DisableScoreboard()
+{
+	if (_GameHUD != NULL)
+		_GameHUD->EnableScoreboardUW(false);
+}
 
 void AMPPlayerController::ToggleChat()
 {
@@ -276,4 +313,45 @@ void AMPPlayerController::ToggleChat()
 	}
 
 	//UE_LOG(LogAMPPlayerController, Warning, TEXT("Chat Key Pressed"));
+}
+
+void AMPPlayerController::Client_KickFromServer_Implementation(const FString& KickReason)
+{
+	//GetWorld()->ServerTravel("?listen?game=FFA");
+	//ClientTravel("/Game/Levels/EntryMap", ETravelType::TRAVEL_Absolute);
+	if (UMPGameInstance* GI = Cast<UMPGameInstance>(UGameplayStatics::GetGameInstance(GetWorld())))
+	{
+		FString Reason = KickReason;
+		GI->SetKickReason(Reason);
+	}
+	
+	UGameplayStatics::OpenLevel(GetWorld(), "/Game/Server/Maps/EntryMap", true, "?game=MainMenu");
+}
+
+void AMPPlayerController::Client_GameEnded_Implementation()
+{
+	if (!_GameHUD)
+		return;
+
+	_GameHUD->EnableMapVoteUW(true);
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+}
+
+void AMPPlayerController::Client_TravelingToNewMap_Implementation(bool bTraveling)
+{
+	if (!_GameHUD)
+		return;
+
+	_GameHUD->EnableLoadingLevelUW(bTraveling);
+}
+
+void AMPPlayerController::Server_SendMapVote_Implementation(int8 MapVote)
+{
+	if (AMPGameMode* GM = Cast<AMPGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+	{
+		GM->ChangeMapVote(_CurrentMapVote, MapVote);
+		_CurrentMapVote = MapVote;
+	}
 }

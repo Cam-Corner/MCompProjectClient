@@ -3,13 +3,47 @@
 
 #include "UI/GameHUD.h"
 #include "Networking/ChatSystemUI.h"
+#include "UI/ScoreBoardUW.h"
 #include "UI/PlayerUI.h"
 #include "UObject/ConstructorHelpers.h"
+#include "UI/MapVoteScreenUW.h"
 
 DEFINE_LOG_CATEGORY(LogAGameHUD);
 
 AGameHUD::AGameHUD()
 {
+	//find the PreMatch start UserWidget Blueprint
+	static ConstructorHelpers::FClassFinder<UUserWidget> PreMatchUW(TEXT("/Game/UI/UW_PreMatchStart"));
+	if (PreMatchUW.Succeeded())
+	{
+		_PreMatchStartUW = PreMatchUW.Class;
+	}
+	else
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget blueprint for PreMatchStart (Constructor Helpers)"));
+	}
+
+	static ConstructorHelpers::FClassFinder<UPlayerUI> PlayerUW(TEXT("/Game/UI/UW_PlayerUI"));
+	if (PlayerUW.Succeeded())
+	{
+		_PlayerUIUW = PlayerUW.Class;
+	}
+	else
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget blueprint for PlayerUI (Constructor Helpers)"));
+	}
+
+	//find the Chat System UserWidget Blueprint
+	static ConstructorHelpers::FClassFinder<UScoreBoardUW> ScoreboardUW(TEXT("/Game/UI/UW_Scoreboard"));
+	if (ScoreboardUW.Succeeded())
+	{
+		_ScoreboardUW = ScoreboardUW.Class;
+	}
+	else
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not find widget blueprint for Scoreboard (Constructor Helpers)"));
+	}
+
 	//find the Chat System UserWidget Blueprint
 	static ConstructorHelpers::FClassFinder<UChatSystemUI> ChatUW(TEXT("/Game/UI/ChatSystem/UW_ChatSystem"));
 	if (ChatUW.Succeeded())
@@ -21,25 +55,26 @@ AGameHUD::AGameHUD()
 		UE_LOG(LogAGameHUD, Error, TEXT("Could not find widget blueprint for ChatSystem (Constructor Helpers)"));
 	}
 
-	//find the PreMatch start UserWidget Blueprint
-	static ConstructorHelpers::FClassFinder<UUserWidget> PreMatchUW(TEXT("/Game/UI/UW_PreMatchStart"));
-	if (PreMatchUW.Succeeded())
+	//find the MapVote UserWidget Blueprint
+	static ConstructorHelpers::FClassFinder<UMapVoteScreenUW> MapVoteUW(TEXT("/Game/UI/UW_MapVote"));
+	if (MapVoteUW.Succeeded())
 	{
-		_PreMatchStartUW = PreMatchUW.Class;
+		_MapVoteScreenUW = MapVoteUW.Class;
 	}
 	else
 	{
-		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget bluerping for PreMatchStart (Constructor Helpers)"));
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not find widget blueprint for MapVoteScreen (Constructor Helpers)"));
 	}
 
-	static ConstructorHelpers::FClassFinder<UPlayerUI> PlayerUW(TEXT("/Game/UI/UW_PlayerUI"));
-	if (PlayerUW.Succeeded())
+	//find the LoadingLevel UserWidget Blueprint
+	static ConstructorHelpers::FClassFinder<UUserWidget> LoadLevelUW(TEXT("/Game/UI/UW_LoadingLevel"));
+	if (LoadLevelUW.Succeeded())
 	{
-		_PlayerUIUW = PlayerUW.Class;
+		_LoadingLevelUW = LoadLevelUW.Class;
 	}
 	else
 	{
-		UE_LOG(LogAGameHUD, Error, TEXT("Coud not find widget bluerping for PlayerUI (Constructor Helpers)"));
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not find widget blueprint for LoadLevelUW (Constructor Helpers)"));
 	}
 }
 
@@ -49,9 +84,14 @@ void AGameHUD::BeginPlay()
 
 	if (GEngine && GEngine->GameViewport)
 	{
-		CreateChatSystemWidget();
 		CreatePreMatchStartWidget();
 		CreatePlayerUIWidget();
+		CreateScoreboardWidget();
+		CreateChatSystemWidget();
+		CreateMapVoteWidget();
+		CreateLoadingLevelWidget();
+
+		//UpdateScoreboard();
 	}
 }
 
@@ -116,6 +156,54 @@ void AGameHUD::CreatePreMatchStartWidget()
 	EnablePreMatchStartUW(false);
 }
 
+void AGameHUD::CreateScoreboardWidget()
+{
+	if (_ScoreboardUW == NULL || _ActiveScoreboardUW != NULL)
+		return;
+
+	_ActiveScoreboardUW = CreateWidget<UScoreBoardUW>(GetOwningPlayerController(), _ScoreboardUW.LoadSynchronous());
+	if (_ActiveScoreboardUW == nullptr)
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not create widget: ScoreboardUW"));
+		return;
+	}
+
+	_ActiveScoreboardUW->AddToViewport();
+	EnableScoreboardUW(false);
+}
+
+void AGameHUD::CreateMapVoteWidget()
+{
+	if (_MapVoteScreenUW == NULL || _ActiveMapVoteScreenUW != NULL)
+		return;
+
+	_ActiveMapVoteScreenUW = CreateWidget<UMapVoteScreenUW>(GetOwningPlayerController(), _MapVoteScreenUW.LoadSynchronous());
+	if (_ActiveMapVoteScreenUW == nullptr)
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not create widget: MapVoteUW"));
+		return;
+	}
+
+	_ActiveMapVoteScreenUW->AddToViewport();
+	EnableMapVoteUW(false);
+}
+
+void AGameHUD::CreateLoadingLevelWidget()
+{
+	if (_LoadingLevelUW == NULL || _ActiveLoadingLevelUW != NULL)
+		return;
+
+	_ActiveLoadingLevelUW = CreateWidget<UUserWidget>(GetOwningPlayerController(), _LoadingLevelUW.LoadSynchronous());
+	if (_ActiveLoadingLevelUW == nullptr)
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Could not create widget: LoadingLevelUW"));
+		return;
+	}
+
+	_ActiveLoadingLevelUW->AddToViewport();
+	EnableLoadingLevelUW(false);
+}
+
 void AGameHUD::EscapePressed()
 {
 	UE_LOG(LogAGameHUD, Warning, TEXT("Enter Pressed"));
@@ -131,6 +219,18 @@ void AGameHUD::EnablePreMatchStartUW(bool bEnable)
 		_ActivePreMatchStartUW->SetVisibility(ESlateVisibility::Visible);
 	else
 		_ActivePreMatchStartUW->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AGameHUD::UpdateScoreboard()
+{
+	UE_LOG(LogAGameHUD, Warning, TEXT("UpdateScoreboard Function Called"));
+	if (_ActiveScoreboardUW == nullptr)
+	{
+		UE_LOG(LogAGameHUD, Warning, TEXT("Returned NULL"));
+		return;
+	}
+	UE_LOG(LogAGameHUD, Warning, TEXT("Calling function on Scoreboard widget"));
+	_ActiveScoreboardUW->UpdateScoreBoard();
 }
 
 void AGameHUD::EnableChatSystem(bool bEnable)
@@ -177,9 +277,51 @@ void AGameHUD::EnablePlayerUIUW(bool bEnable)
 		return;
 
 	if (bEnable)
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Enable PlayerUI Called (true)"));
+	}
+	else
+	{
+		UE_LOG(LogAGameHUD, Error, TEXT("Enable PlayerUI Called (false)"));
+	}
+
+	if (bEnable)
 		_ActivePlayerUI->SetVisibility(ESlateVisibility::Visible);
 	else
 		_ActivePlayerUI->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AGameHUD::EnableLoadingLevelUW(bool bEnable)
+{
+	if (_ActiveLoadingLevelUW == nullptr)
+		return;
+
+	if (bEnable)
+		_ActiveLoadingLevelUW->SetVisibility(ESlateVisibility::Visible);
+	else
+		_ActiveLoadingLevelUW->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AGameHUD::EnableScoreboardUW(bool bEnable)
+{
+	if (_ActiveScoreboardUW == nullptr)
+		return;
+
+	if (bEnable)
+		_ActiveScoreboardUW->SetVisibility(ESlateVisibility::Visible);
+	else
+		_ActiveScoreboardUW->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AGameHUD::EnableMapVoteUW(bool bEnable)
+{
+	if (_ActiveMapVoteScreenUW == nullptr)
+		return;
+
+	if (bEnable)
+		_ActiveMapVoteScreenUW->SetVisibility(ESlateVisibility::Visible);
+	else
+		_ActiveMapVoteScreenUW->SetVisibility(ESlateVisibility::Hidden);
 }
 
 void AGameHUD::SetHealthBar(const float CurrentHealth, const float PlayersMaxHealth)
@@ -192,6 +334,7 @@ void AGameHUD::SetHealthBar(const float CurrentHealth, const float PlayersMaxHea
 	_ActivePlayerUI->SetHealth(CurrentHealthPercent);
 }
 
+
 void AGameHUD::AddNewChatMessage(FString DisplayName, FString Message)
 {
 	if (_ActiveChatSystemUW == NULL)
@@ -199,3 +342,5 @@ void AGameHUD::AddNewChatMessage(FString DisplayName, FString Message)
 
 	_ActiveChatSystemUW->AddNewChatMessage(DisplayName, Message);
 }
+
+

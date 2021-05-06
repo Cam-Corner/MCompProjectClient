@@ -40,6 +40,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 		FString GetTimeRemaining();
 
+	void Restart();
 	/*UFUNCTION(Server, UnReliable, WithValidation, BlueprintCallable)
 		void SendChatMessageToServer(const FChatMessage Message);
 

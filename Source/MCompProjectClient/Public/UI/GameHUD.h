@@ -40,9 +40,29 @@ public:
 	void EnablePreMatchStartUW(bool bEnable);
 
 	/*
+	* Updates the scoreboard so the order is correct
+	*/
+	void UpdateScoreboard();
+
+	/*
+	* Enable/disable Scoreboard UserWidget
+	*/
+	void EnableScoreboardUW(bool bEnable);
+
+	/*
+	* Enable/disable MapVote UserWidget
+	*/
+	void EnableMapVoteUW(bool bEnable);
+
+	/*
 	* Enable/disable PreMatch Start UserWidget
 	*/
 	void EnablePlayerUIUW(bool bEnable);
+
+	/*
+	* Enable/disable LoadingLevel Start UserWidget
+	*/
+	void EnableLoadingLevelUW(bool bEnable);
 
 	/*
 	* Set the health of the health bar
@@ -64,18 +84,40 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
 	TAssetSubclassOf<class UPlayerUI> _PlayerUIUW;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
+	TAssetSubclassOf<class UScoreBoardUW> _ScoreboardUW;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
+		TAssetSubclassOf<class UMapVoteScreenUW> _MapVoteScreenUW;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Game Widgets")
+		TAssetSubclassOf<class UUserWidget> _LoadingLevelUW;
+
 private:
 	//Chat System
 	class UChatSystemUI* _ActiveChatSystemUW;
 
 	class UPlayerUI* _ActivePlayerUI;
 
-	void CreateChatSystemWidget();
+	class UMapVoteScreenUW* _ActiveMapVoteScreenUW;
+
+	class UScoreBoardUW* _ActiveScoreboardUW;
+
+	class UUserWidget* _ActiveLoadingLevelUW;
 
 	//PreMatch Start Widget
 	class UUserWidget* _ActivePreMatchStartUW;
 
+	void CreateChatSystemWidget();
+
 	void CreatePreMatchStartWidget();
 
 	void CreatePlayerUIWidget();
+
+	void CreateScoreboardWidget();
+
+	void CreateMapVoteWidget();
+
+	void CreateLoadingLevelWidget();
+
 };

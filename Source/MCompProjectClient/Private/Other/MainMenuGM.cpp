@@ -33,12 +33,11 @@ AMainMenuGM::AMainMenuGM()
 void AMainMenuGM::BeginPlay()
 {
 	Super::BeginPlay();
-
-#if WITH_SERVER_CODE
-
-	 //GetWorld()->ServerTravel("World'/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap.ThirdPersonExampleMap' ?listen ?game = AMPGameMode");
-
-#endif
+	
+	if (GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		GetWorld()->ServerTravel("/Game/Levels/lvl_Level?listen?game=FFA");
+	}
 
 	//Spawn the character customiser
 	if (APlayerCameraManager* PCM = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0))

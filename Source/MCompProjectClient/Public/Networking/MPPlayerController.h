@@ -29,6 +29,25 @@ public:
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void SetClientsCamera();
 
+	UFUNCTION(Client, Reliable)
+		void Client_GameStarted(bool bStarted);
+
+	UFUNCTION(Server, Reliable)
+		void Server_UpdateItems();
+
+	UFUNCTION(Client, Reliable)
+		void Client_KickFromServer(const FString& KickReason);
+
+	UFUNCTION(Client, Reliable)
+		void Client_GameEnded();
+
+	UFUNCTION(Client, Reliable)
+		void Client_TravelingToNewMap(bool bTraveling);
+
+	UFUNCTION(Server, Reliable)
+		void Server_SendMapVote(int8 MapVote);
+
+
 	//UFUNCTION(Client, Reliable)
 	//	void Client_SetHasControl(bool bHasControl);
 
@@ -54,9 +73,6 @@ public:
 	virtual void SetupInputComponent() override;
 
 	void SetCameraToGameCamera();
-
-	UFUNCTION(Client, Reliable)
-	void Client_GameStarted();
 
 private:
 	/*
@@ -96,4 +112,15 @@ private:
 	* @can be null
 	*/
 	class AGameHUD* _GameHUD;
+
+	int8 _CurrentMapVote{ 0 };
+
+protected:
+	UFUNCTION()
+	void EnableScoreboard();
+	
+	UFUNCTION()
+	void DisableScoreboard();
+
+
 };

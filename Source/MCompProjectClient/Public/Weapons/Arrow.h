@@ -29,6 +29,11 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(NetMulticast, Reliable)
+		void Mulitcast_UpdatePosition(FVector StartPos, float CurrentDeltaTime);
+
+	UFUNCTION(Server, Reliable)
+		void Server_RequestPosUpdate();
 private:
 	/** The arrow mesh */
 	UPROPERTY(VisibleAnywhere)

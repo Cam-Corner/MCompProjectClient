@@ -3,6 +3,7 @@
 #include "Networking/MPPlayerState.h"
 #include "Networking/MPGameState.h"
 #include "Networking/MPPlayerController.h"
+#include "UI/GameHUD.h"
 #include "Kismet/GameplayStatics.h"
 #include "MPGameInstance.h"
 #include "UI/GameHUD.h"
@@ -15,12 +16,20 @@ DEFINE_LOG_CATEGORY(LogAMPPlayerState);
 
 AMPPlayerState::AMPPlayerState()
 {
-
+	SetActorTickEnabled(true);
 }
 
 void AMPPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		if (AGameHUD* HUD = Cast<AGameHUD>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetHUD()))
+		{
+			HUD->UpdateScoreboard();
+		}
+	}
 
 	//if (GetLocalRole() != ROLE_Authority)
 	//{
@@ -87,6 +96,53 @@ void AMPPlayerState::Multicast_SendChatMessageToEveryone_Implementation(const FC
 		}
 	}
 }
+
+void AMPPlayerState::IncreaseKillCounter()
+{ 
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		_Kills++;
+		//Multicast_GotAKill();
+
+	}
+
+}
+
+void AMPPlayerState::Tick(float DeltaTime)
+{
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		if (_ClientsOldKillCount != _Kills || _ClientsOldUsername != GetPlayerName())
+		{
+			_ClientsOldKillCount = _Kills;
+			_ClientsOldUsername = GetPlayerName();
+
+			if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+			{
+				if (AGameHUD* HUD = Cast<AGameHUD>(PC->GetHUD()))
+				{
+					HUD->UpdateScoreboard();
+				}
+			}
+		}
+	}
+}
+
+/*bool AMPPlayerState::Multicast_GotAKill_Validate()
+{
+	return true;
+}
+
+void AMPPlayerState::Multicast_GotAKill_Implementation()
+{
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		if (AGameHUD* HUD = Cast<AGameHUD>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetHUD()))
+		{
+			HUD->UpdateScoreboard();
+		}
+	}
+}*/
 
 void AMPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {

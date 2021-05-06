@@ -54,21 +54,22 @@ public:
 
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
 	/** Increase the kill counter
 	* @ Will only work when being called on the server
 	*/
-	void IncreaseKillCounter() { if (GetLocalRole() == ROLE_Authority) _Kills++; }
+	void IncreaseKillCounter();
 
 	/** Increase the Death counter
 	* @ Will only work when being called on the server
 	*/
-	void IncreaseDeathCounter() { if(GetLocalRole() == ROLE_Authority) _Deaths++; }
+	void IncreaseDeathCounter() { if (GetLocalRole() == ROLE_Authority) _Deaths++; }
 
 	/** Get the KD and name of this player
 	* @ The passed in variable should be used to save the KD
 	*/
 	UFUNCTION(BlueprintCallable)
-	void GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deaths);
+		void GetNameAndKD(FString& PlayerName, int32& Kills, int32& Deaths);
 
 	/*
 	* Send a chat message to the server to be rpc to all clients
@@ -82,11 +83,22 @@ public:
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_SendChatMessageToEveryone(const FChatMessage& Message);
 
+	/*
+	* Tell the server that this playerstate has got a kill
+	* @ useful for when you want to update something when someone has a kill, like the scoreboard for example
+	*/
+	/*UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_GotAKill();*/
+
 protected:
 	UPROPERTY(Replicated)
 		int32 _Kills { 0 };
 
 	UPROPERTY(Replicated)
 		int32 _Deaths { 0 };
+
+	int32 _ClientsOldKillCount{ 0 };
+
+	FString _ClientsOldUsername = " ";
 
 };

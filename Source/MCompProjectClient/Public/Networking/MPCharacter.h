@@ -55,6 +55,12 @@ public:
 	UFUNCTION(Client, Reliable, WithValidation)
 		void RequestItems_Client();
 
+	UFUNCTION(NetMulticast, Reliable)
+		void Multicast_KnockBack(float Distance, FVector2D Direction);
+
+
+	/*UFUNCTION(NetMulticast, reliable)
+		void Multicast_SendPlayersMyEquiptment();*/
 /*=======
 Server Functions
 =====*/
@@ -87,7 +93,8 @@ protected:
 		void SetupMeshes_Multicast(uint8 HelmetID, uint8 HairID, uint8 FaceID,
 			uint8 ShouldersID, uint8 BodyID, uint8 GlovesID, uint8 BeltID, uint8 ShoesID
 		/*struct FFinalCharacterGear EquipedGear*/);
-	
+
+
 	/** Send the items equiped to the server */
 	UFUNCTION(Server, Reliable, WithValidation)
 		void SendItemsEquiped_Server(uint8 HelmetID, uint8 HairID, uint8 FaceID,
@@ -103,6 +110,7 @@ protected:
 	/** Equip a weapon for this actor and call on all clients */
 	UFUNCTION(NetMulticast, reliable, WithValidation)
 		void EquipWeapon_Multicast();
+
 
 	/** Tell the server im ready to recieve intitial stuff */
 	//UFUNCTION(Server, Reliable)
@@ -188,7 +196,7 @@ protected:
 		void QuitGame();
 
 	/*
-	* smooths the rotation to match where the play is currently facing
+	* smooths the rotation to match where the player is currently facing
 	*/
 	void SmoothRotationToDirection(float DeltaTime);
 /*====
@@ -259,6 +267,23 @@ protected:
 
 	float CurrentYaw = 1;
 
+	//UPROPERTY(Replicated)
+	//	uint8 _HelmetID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _HairID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _FaceID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _ShouldersID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _BodyID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _GlovesID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _BeltID = 0;
+	//UPROPERTY(Replicated)
+	//	uint8 _ShoesID = 0;
+
 public:
 	/* Called when the actor needs to pickup a weapon */
 	virtual void PickupWeapon(class AWeaponBase* Weapon);
@@ -270,4 +295,17 @@ public:
 	* @Sword and shield are hidden because they are just hidden while using a special weapon
 	*/
 	class AWeaponBase* _SpecialWeaponEquiped;
+
+private:
+	FVector2D _KnockBackDir{ 0, 0 };
+	float _KnockBackAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "KnockBack")
+	float _KnockBackSpeedMultiplier = 1500.0f;
+	
+	float _KnockBackDeltaTimeSent = 0;
+
+	FVector2D OldPos;
+
+	
 };

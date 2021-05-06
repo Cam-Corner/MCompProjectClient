@@ -108,14 +108,14 @@ void AWeaponBase::PickupWeapon(AController* NewOwner, AMPCharacter* CharacterToA
 		_WeaponPickupHitbox->SetGenerateOverlapEvents(false);
 		_WeaponPickupHitbox->SetSphereRadius(0);
 
-		AttachToActor(CharacterToAttachTo, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 		//SetActorLocation(CharacterToAttachTo->GetMesh()->GetSocketLocation(SocketName));
 		//SetActorRotation(CharacterToAttachTo->GetMesh()->GetSocketRotation(SocketName) + FRotator(0, 0, 90));
-
-		UE_LOG(LogAWeaponBase, Display, TEXT("Weapon Has Been Picked up"));
-		_CharacterAttachedTo = CharacterToAttachTo;
 		_bWeaponIsEquipedByPlayer = true;
 	}
+
+	AttachToActor(CharacterToAttachTo, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+	UE_LOG(LogAWeaponBase, Display, TEXT("Weapon Has Been Picked up"));
+	_CharacterAttachedTo = CharacterToAttachTo;
 }
 
 void AWeaponBase::WeaponPickupOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& HitResult)
