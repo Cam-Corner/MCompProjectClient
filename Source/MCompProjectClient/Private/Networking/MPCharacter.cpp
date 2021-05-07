@@ -125,6 +125,15 @@ void AMPCharacter::BeginPlay()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
+	_OldGear._BeltID = 0;
+	_OldGear._BodyID = 0;
+	_OldGear._FaceID = 0;
+	_OldGear._GlovesID = 0;
+	_OldGear._HairID = 0;
+	_OldGear._HelmetID = 0;
+	_OldGear._ShoesID = 0;
+	_OldGear._ShouldersID = 0;
+
 	/* Temporary set all the meshes to the default (0 index)
 	*  until the server recieves the right equipment */
 	SetupSkeletalCharacterMeshes(0, 0, 0, 0, 0, 0, 0, 0); 
@@ -267,7 +276,7 @@ void AMPCharacter::Tick(float DeltaTime)
 	}
 	else if (GetOwner() == UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
-		if (!_bIsAttacking)
+		if (!_bIsAttacking && !_bBlocking)
 			FinalMovement(DeltaTime);
 
 		SmoothRotationToDirection(DeltaTime);
@@ -291,6 +300,30 @@ void AMPCharacter::Tick(float DeltaTime)
 		}
 
 		SmoothRotationToDirection(DeltaTime);
+	}
+
+	SetupSkeletalCharacterMeshes(_EquipedGear._HelmetID, _EquipedGear._HairID, _EquipedGear._FaceID,
+		_EquipedGear._ShouldersID, _EquipedGear._BodyID, _EquipedGear._GlovesID, _EquipedGear._BeltID,
+		_EquipedGear._ShoesID);
+
+	UE_LOG(LogAMPCharacter, Warning, TEXT("BodyID: %i"), (int)_EquipedGear._BodyID);
+
+	//quick and dirty fix for incorrect cosmetics
+	if (_OldGear._HelmetID != _EquipedGear._HelmetID || _OldGear._HairID != _EquipedGear._HairID
+		 || _OldGear._FaceID != _EquipedGear._FaceID || _OldGear._ShouldersID != _EquipedGear._ShouldersID
+		 || _OldGear._BodyID != _EquipedGear._BodyID || _OldGear._GlovesID != _EquipedGear._GlovesID
+		 || _OldGear._BeltID != _EquipedGear._BeltID || _OldGear._ShoesID != _EquipedGear._ShoesID)
+	{
+		
+
+		_OldGear._BeltID = _EquipedGear._BeltID;
+		_OldGear._BodyID = _EquipedGear._BodyID;
+		_OldGear._FaceID = _EquipedGear._FaceID;
+		_OldGear._GlovesID = _EquipedGear._GlovesID;
+		_OldGear._HairID = _EquipedGear._HairID;
+		_OldGear._HelmetID = _EquipedGear._HelmetID;
+		_OldGear._ShoesID = _EquipedGear._ShoesID;
+		_OldGear._ShouldersID = _EquipedGear._ShouldersID;
 	}
 }
 
@@ -469,8 +502,8 @@ void AMPCharacter::FinalMovement(float DeltaTime)
 
 void AMPCharacter::SmoothRotationToDirection(float DeltaTime)
 {
-	if (_bIsAttacking)
-		return;
+	//if (_bIsAttacking)
+	//	return;
 
 	if (GetOwner() != UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
@@ -762,8 +795,6 @@ void AMPCharacter::SetupMeshes_Multicast_Implementation(uint8 HelmetID, uint8 Ha
 		_EquipedGear._GlovesID = GlovesID;
 		_EquipedGear._BeltID = BeltID;
 		_EquipedGear._ShoesID = ShoesID;
-
-
 	}
 
 	SetupSkeletalCharacterMeshes(HelmetID, HairID, FaceID, ShouldersID, BodyID, GlovesID, BeltID, ShoesID);

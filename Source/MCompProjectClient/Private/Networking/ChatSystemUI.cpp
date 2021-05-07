@@ -69,8 +69,12 @@ void UChatSystemUI::AddNewChatMessage(FString DisplayName, FString Message)
 
 void UChatSystemUI::CommitChatMessage(const FText& Text, ETextCommit::Type CommitMethod)
 {
-	if (CommitMethod != ETextCommit::OnEnter)
-		return;
+	FSlateApplication::Get().SetUserFocusToGameViewport(0);
+
+	//if (CommitMethod != ETextCommit::OnEnter)
+	//	return;
+
+	_TypingTextBox->SetText(FText::FromString("Press 'T' to start typing..."));
 
 	if (AMPPlayerController* PC = Cast<AMPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
 	{
@@ -92,6 +96,7 @@ void UChatSystemUI::CommitChatMessage(const FText& Text, ETextCommit::Type Commi
 
 FReply UChatSystemUI::NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
+
 	if (InKeyEvent.GetKey() == EKeys::Enter)
 	{
 		SendChatMessage();
@@ -173,7 +178,6 @@ void UChatSystemUI::EnableTyping(bool bEnable)
 	else
 	{
 		_TypingTextBox->SetVisibility(ESlateVisibility::Visible);
-		UE_LOG(LogTemp, Warning, TEXT("Typing Disabled"));
-		
+		UE_LOG(LogTemp, Warning, TEXT("Typing Disabled"));		
 	}
 }

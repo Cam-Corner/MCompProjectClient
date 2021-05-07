@@ -224,10 +224,12 @@ void AMPGameMode::PlayerAttackedPlayer(AActor* AttackerActor, AController* Attac
 			{
 				if (!BlockedShot(AttackerChar, MPC))
 				{
-					MPC->RemoveSomeHP(10, DamagedC->PlayerState->GetPlayerName());
+					MPC->RemoveSomeHP(40, DamagedC->PlayerState->GetPlayerName());
 					FVector2D Direction = (DamagedActor->GetActorLocation().X, DamagedActor->GetActorLocation().Y)
 						- (AttackerChar->GetActorLocation().X, AttackerChar->GetActorLocation().Y);
-					Direction.Normalize();
+
+					Direction.Normalize(1.0);
+
 					MPC->Multicast_KnockBack(400.0f, Direction);
 
 					if (MPC->GetHealth() <= 0)
@@ -242,6 +244,15 @@ void AMPGameMode::PlayerAttackedPlayer(AActor* AttackerActor, AController* Attac
 						}
 
 					}
+				}
+				else
+				{
+					FVector2D Direction = (AttackerChar->GetActorLocation().X, AttackerChar->GetActorLocation().Y)
+						- (DamagedActor->GetActorLocation().X, DamagedActor->GetActorLocation().Y);
+
+					Direction.Normalize(1.0);
+
+					AttackerChar->Multicast_KnockBack(400.0f, Direction);
 				}
 			}
 		}

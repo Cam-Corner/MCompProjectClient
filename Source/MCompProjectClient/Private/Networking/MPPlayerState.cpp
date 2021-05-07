@@ -16,12 +16,15 @@ DEFINE_LOG_CATEGORY(LogAMPPlayerState);
 
 AMPPlayerState::AMPPlayerState()
 {
-	SetActorTickEnabled(true);
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AMPPlayerState::BeginPlay()
 {
+	PrimaryActorTick.bCanEverTick = true;
 	Super::BeginPlay();
+
+	//SetActorTickEnabled(true);
 
 	if (GetLocalRole() != ROLE_Authority)
 	{
@@ -112,6 +115,14 @@ void AMPPlayerState::Tick(float DeltaTime)
 {
 	if (GetLocalRole() != ROLE_Authority)
 	{
+		//UE_LOG(LogAMPPlayerState, Display, TEXT("TICK FUNCTION"));
+		//if (AGameHUD* HUD = Cast<AGameHUD>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetHUD()))
+		//{
+		//	HUD->UpdateScoreboard();
+		//	
+		//}
+
+
 		if (_ClientsOldKillCount != _Kills || _ClientsOldUsername != GetPlayerName())
 		{
 			_ClientsOldKillCount = _Kills;
@@ -122,6 +133,7 @@ void AMPPlayerState::Tick(float DeltaTime)
 				if (AGameHUD* HUD = Cast<AGameHUD>(PC->GetHUD()))
 				{
 					HUD->UpdateScoreboard();
+					UE_LOG(LogAMPPlayerState, Display, TEXT("PlayerState Updating Scoreboard!"));
 				}
 			}
 		}

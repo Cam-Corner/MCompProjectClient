@@ -223,6 +223,7 @@ protected:
 	UPROPERTY(Replicated)
 	struct FFinalCharacterGear _EquipedGear;
 
+	struct FFinalCharacterGear _OldGear;
 	/** The final movement vector of this frame */
 	UPROPERTY(Replicated)
 	FVector _FinalMovementDirection{ 0, 0, 0 };

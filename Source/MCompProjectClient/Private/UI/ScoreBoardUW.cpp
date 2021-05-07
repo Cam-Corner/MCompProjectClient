@@ -25,6 +25,7 @@ void UScoreBoardUW::UpdateScoreBoard()
 				FScoreboardKD TempKD;
 				PS->GetNameAndKD(TempKD.Username, TempKD.Kills, TempKD.Deaths);
 				PlayersKD.Add(TempKD);
+				UE_LOG(LogTemp, Warning, TEXT("This Players Kills: %s"), *FString::SanitizeFloat(TempKD.Kills));
 			}
 		}
 	}
@@ -91,7 +92,7 @@ void UScoreBoardUW::UpdateScoreBoard()
 	}
 
 	//UE_LOG(LogTemp, Warning, TEXT("PlayersKD: %s, Widgets: %s"), *FString::SanitizeFloat(PlayersKD.Num()),
-	//		*FString::SanitizeFloat(Widgets.Num()))
+	//		*FString::SanitizeFloat(UsernameWidgets.Num()))
 }
 
 void UScoreBoardUW::InsertionSortArray(TArray<FScoreboardKD>& Array)

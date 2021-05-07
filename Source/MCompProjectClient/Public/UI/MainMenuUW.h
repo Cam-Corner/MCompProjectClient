@@ -36,10 +36,20 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 		class UTextBlock* _KickReasonText;
 
+	UPROPERTY(meta = (BindWidget))
+		class UButton* _ConnectIP;
+
+	UPROPERTY(meta = (BindWidget))
+		class UMultiLineEditableText* _ConnectByIPText;
+
 	class AMainMenuHUD* _MainMenuHUD;
 private:
 	UFUNCTION()
 		void PlayButtonPressed();
+
+	UFUNCTION()
+		void ConnectToServerByIP();
+
 
 	UFUNCTION()
 		void CustomizationButtonPressed();

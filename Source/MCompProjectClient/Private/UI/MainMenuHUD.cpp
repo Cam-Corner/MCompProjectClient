@@ -96,6 +96,11 @@ void AMainMenuHUD::JoinServer()
 	UGameplayStatics::OpenLevel(GetWorld(), "127.0.0.1", true, "?game = AMPGameMode");
 }
 
+void AMainMenuHUD::JoinServerByIP(FName ServerIP)
+{
+	UGameplayStatics::OpenLevel(GetWorld(), ServerIP, true, "?game = AMPGameMode");
+}
+
 void AMainMenuHUD::ChangeUITabTo(const EMenuTypes Menu)
 {
 	switch(_CurrentMenu)

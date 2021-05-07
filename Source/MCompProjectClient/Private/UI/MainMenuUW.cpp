@@ -9,6 +9,7 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/RichTextBlock.h"
+#include "Components/MultiLineEditableText.h"
 
 void UMainMenuUW::NativeConstruct()
 {
@@ -16,7 +17,8 @@ void UMainMenuUW::NativeConstruct()
 	_CustomizationButton->OnPressed.AddDynamic(this, &UMainMenuUW::CustomizationButtonPressed);
 	_RemoveKickMessageButton->OnPressed.AddDynamic(this, &UMainMenuUW::RemoveKickReason);
 	_QuitButton->OnPressed.AddDynamic(this, &UMainMenuUW::QuitButtonPressed);
-	
+	_ConnectIP->OnPressed.AddDynamic(this, &UMainMenuUW::ConnectToServerByIP);
+
 	if (APlayerController* PC = Cast<APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
 	{
 		if (AMainMenuHUD* MainMenuHUD = Cast<AMainMenuHUD>(PC->GetHUD()))
@@ -32,6 +34,11 @@ void UMainMenuUW::NativeConstruct()
 	RemoveKickReason();
 }
 
+void UMainMenuUW::ConnectToServerByIP()
+{
+	FName IP = (FName)_ConnectByIPText->GetText().ToString();
+	_MainMenuHUD->JoinServerByIP(IP);
+}
 
 void UMainMenuUW::PlayButtonPressed()
 {

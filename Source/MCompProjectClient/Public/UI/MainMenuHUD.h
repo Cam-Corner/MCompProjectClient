@@ -37,6 +37,8 @@ public:
 
 	void JoinServer();
 
+	void JoinServerByIP(FName ServerIP);
+
 	void ChangeUITabTo(const EMenuTypes Menu);
 
 	virtual void BeginPlay() override;
